@@ -5,15 +5,34 @@ const directions = [
   { key: "right", index: 3, label: "Right" },
 ];
 
+const buttons = [
+  { key: "a", label: "A" },
+  { key: "b", label: "B" },
+  { key: "x", label: "X" },
+  { key: "y", label: "Y" },
+  { key: "lb", label: "LB" },
+  { key: "rb", label: "RB" },
+  { key: "back", label: "Back" },
+  { key: "start", label: "Start" },
+  { key: "l3", label: "L3" },
+  { key: "r3", label: "R3" },
+  { key: "logo", label: "Home" },
+  { key: "lt", label: "LT" },
+  { key: "rt", label: "RT" },
+];
+
 const elements = {
   portSelect: document.querySelector("#portSelect"),
   status: document.querySelector("#status"),
   log: document.querySelector("#log"),
   sampleGrid: document.querySelector("#sampleGrid"),
   directionGrid: document.querySelector("#directionGrid"),
+  buttonPinGrid: document.querySelector("#buttonPinGrid"),
+  pinScan: document.querySelector("#pinScan"),
 };
 
 let monitorTimer = null;
+let pinMonitorTimer = null;
 
 function selectedPort() {
   return elements.portSelect.value;
@@ -63,6 +82,18 @@ function renderSamples(fields = {}) {
   }).join("");
 }
 
+function renderButtonPins() {
+  elements.buttonPinGrid.innerHTML = buttons.map((button) => `
+    <article class="button-pin-card" data-button="${button.key}">
+      <label class="field">
+        ${button.label}
+        <input type="number" min="0" max="33" step="1" data-field="pin">
+      </label>
+      <button type="button" data-action="applyButtonPin" data-button="${button.key}">Apply</button>
+    </article>
+  `).join("");
+}
+
 function renderDirectionCards() {
   elements.directionGrid.innerHTML = directions.map((direction) => `
     <article class="direction-card" data-key="${direction.key}">
@@ -108,6 +139,10 @@ function cardFor(key) {
   return document.querySelector(`.direction-card[data-key="${key}"]`);
 }
 
+function buttonCardFor(key) {
+  return document.querySelector(`.button-pin-card[data-button="${key}"]`);
+}
+
 function applySettings(fields) {
   for (const direction of directions) {
     const card = cardFor(direction.key);
@@ -118,6 +153,12 @@ function applySettings(fields) {
     }
     const activeLow = card.querySelector('[data-field="active_low"]');
     activeLow.checked = fields[`key${direction.index}_active_low`] === "1";
+  }
+  for (const button of buttons) {
+    const card = buttonCardFor(button.key);
+    if (!card) continue;
+    const input = card.querySelector('[data-field="pin"]');
+    input.value = fields[`btn_${button.key}_pin`] ?? "";
   }
 }
 
@@ -132,6 +173,37 @@ function payloadForCard(key) {
   }
   payload.active_low = card.querySelector('[data-field="active_low"]').checked ? 1 : 0;
   return payload;
+}
+
+function payloadForButtonPin(key) {
+  const card = buttonCardFor(key);
+  const value = card.querySelector('[data-field="pin"]').value;
+  return { button: key, pin: Number(value) };
+}
+
+function labelForPin(pin) {
+  const matched = buttons.find((button) => {
+    const card = buttonCardFor(button.key);
+    return card && card.querySelector('[data-field="pin"]').value === String(pin);
+  });
+  return matched ? matched.label : "";
+}
+
+function renderPinScan(fields = {}) {
+  const pressed = Object.entries(fields)
+    .filter(([key, value]) => key.startsWith("pin") && value === "1")
+    .map(([key]) => Number(key.substring(3)))
+    .sort((a, b) => a - b);
+
+  if (pressed.length === 0) {
+    elements.pinScan.innerHTML = '<span class="muted">No pressed pins</span>';
+    return;
+  }
+
+  elements.pinScan.innerHTML = pressed.map((pin) => {
+    const label = labelForPin(pin);
+    return `<span class="pin-chip">Pin ${pin}${label ? ` · ${label}` : ""}</span>`;
+  }).join("");
 }
 
 async function refreshPorts() {
@@ -171,6 +243,12 @@ async function sample() {
   return data;
 }
 
+async function scanPins() {
+  const data = await api("/api/pins", {});
+  renderPinScan(fieldsOf(data));
+  return data;
+}
+
 async function save() {
   const data = await api("/api/save", {});
   log(data.response.text);
@@ -203,9 +281,26 @@ async function applyCard(key) {
   log(`${key}: ${data.response.text}`);
 }
 
+async function applyButtonPin(key) {
+  const data = await api("/api/set", payloadForButtonPin(key));
+  log(`${key} pin: ${data.response.text}`);
+}
+
 function handleError(error) {
   setStatus(error.message, false);
   log(`ERROR ${error.message}`);
+}
+
+function togglePinMonitor() {
+  const button = document.querySelector("#monitorPins");
+  if (pinMonitorTimer) {
+    clearInterval(pinMonitorTimer);
+    pinMonitorTimer = null;
+    button.textContent = "Monitor Pins";
+    return;
+  }
+  pinMonitorTimer = setInterval(() => scanPins().catch(handleError), 120);
+  button.textContent = "Stop Pins";
 }
 
 function toggleMonitor() {
@@ -229,8 +324,17 @@ function bindEvents() {
   document.querySelector("#returnXinput").addEventListener("click", () => flashFirmware("xinput").catch(handleError));
   document.querySelector("#sample").addEventListener("click", () => sample().catch(handleError));
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());
+  document.querySelector("#scanPins").addEventListener("click", () => scanPins().catch(handleError));
+  document.querySelector("#monitorPins").addEventListener("click", () => togglePinMonitor());
   document.querySelector("#calRest").addEventListener("click", () => calRest().catch(handleError));
   document.querySelector("#clearLog").addEventListener("click", () => { elements.log.textContent = ""; });
+  elements.buttonPinGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    if (button.dataset.action === "applyButtonPin") {
+      applyButtonPin(button.dataset.button).catch(handleError);
+    }
+  });
   elements.directionGrid.addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (!button) return;
@@ -243,6 +347,8 @@ function bindEvents() {
 }
 
 renderSamples();
+renderPinScan();
+renderButtonPins();
 renderDirectionCards();
 bindEvents();
 refreshPorts();

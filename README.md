@@ -9,7 +9,7 @@ This repository is a new-generation rewrite rather than a patch on top of `Preci
 - `env:teensy40_config_serial`: configuration firmware, built as USB Serial for the PC tool. This is the default environment.
 - `env:teensy40_xinput`: normal play firmware, built as XInput. Build is allowed, but upload is guarded.
 - `env:teensy40_xinput_selftest`: diagnostic XInput firmware that toggles buttons and D-pad without reading hardware inputs.
-- EEPROM stores hall-sensor calibration and rapid-trigger settings.
+- EEPROM stores hall-sensor calibration, rapid-trigger settings, and digital button pin mapping.
 - The firmware sends XInput reports on a 125 us cadence in normal mode.
 - The PC tools can ping the board, read settings, sample hall values, calibrate rest/bottom positions, tune rapid-trigger thresholds, save, and reset.
 
@@ -74,6 +74,22 @@ Magnetic D-pad inputs use Teensy 4.0 analog pins:
 
 Digital buttons follow the original Precision Fighting Board layout where possible. Trigger pins are moved to 20 and 21 in this starter mapping to avoid colliding with the hall-sensor analog pins.
 
+| Button | Default Pin |
+| --- | --- |
+| A | 11 |
+| B | 12 |
+| X | 8 |
+| Y | 7 |
+| LB | 10 |
+| RB | 9 |
+| Back | 5 |
+| Start | 6 |
+| L3 | 18 |
+| R3 | 19 |
+| Home | 4 |
+| LT | 20 |
+| RT | 21 |
+
 ## PC Tool
 
 Flash `teensy40_config_serial`, then run:
@@ -81,6 +97,7 @@ Flash `teensy40_config_serial`, then run:
 ```powershell
 python tools\fighting_teensy_cli.py --port COM7 ping
 python tools\fighting_teensy_cli.py --port COM7 sample
+python tools\fighting_teensy_cli.py --port COM7 pins
 python tools\fighting_teensy_cli.py --port COM7 cal-rest
 python tools\fighting_teensy_cli.py --port COM7 save
 ```
@@ -93,7 +110,7 @@ Start the local Web UI for calibration and rapid-trigger tuning:
 python tools\fighting_teensy_web.py --port 8765
 ```
 
-Then open `http://127.0.0.1:8765/`. Use the Web UI while the board is running `teensy40_config_serial`; XInput firmware does not expose a COM port in this first version.
+Then open `http://127.0.0.1:8765/`. Use the Web UI while the board is running `teensy40_config_serial`; XInput firmware does not expose a COM port in this first version. The Web UI can edit digital button pin mapping and scan non-hall pins while you press buttons, which helps confirm the assembled wiring.
 
 If the board is running XInput firmware, hold Start while plugging in USB. The firmware will enter the Teensy bootloader, then the Web UI's `Flash Config` button can write `teensy40_config_serial` without opening the case. After tuning, use `Return XInput` to write the normal XInput firmware back.
 
@@ -101,6 +118,7 @@ Tune SOCD, report rate, and per-direction hall thresholds:
 
 ```powershell
 python tools\fighting_teensy_cli.py --port COM7 set --socd neutral --rate-khz 8
+python tools\fighting_teensy_cli.py --port COM7 set --button start --pin 6
 python tools\fighting_teensy_cli.py --port COM7 set --key up --press 80 --release 45 --rapid 28 --active-low 1
 python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point rest
 python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point bottom

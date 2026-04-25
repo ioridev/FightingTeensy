@@ -32,6 +32,7 @@ class ProtocolParsingTests(unittest.TestCase):
         self.assertEqual(command_for_action("cal-rest"), "CAL REST")
         self.assertEqual(command_for_action("reset"), "RESET")
         self.assertEqual(command_for_action("bootloader"), "BOOTLOADER")
+        self.assertEqual(command_for_action("pins"), "PINS")
 
     def test_set_command_builds_key_value_protocol(self):
         command = command_for_action(
@@ -49,6 +50,15 @@ class ProtocolParsingTests(unittest.TestCase):
             command,
             "SET socd=1 rate_khz=8 key2_press=72 key2_release=40 key2_rapid=24 key2_active_low=1",
         )
+
+    def test_set_command_builds_button_pin_protocol(self):
+        command = command_for_action("set", button="start", pin=6)
+
+        self.assertEqual(command, "SET btn_start_pin=6")
+
+    def test_set_command_rejects_unknown_button(self):
+        with self.assertRaises(ValueError):
+            command_for_action("set", button="turbo", pin=22)
 
     def test_cal_key_command_builds_named_key_protocol(self):
         self.assertEqual(

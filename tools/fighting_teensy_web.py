@@ -162,6 +162,9 @@ class WebConfigApp:
     def sample(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, "SAMPLE")
 
+    def pins(self, payload: JsonDict) -> JsonDict:
+        return self._safe_command(payload, command_for_action("pins"))
+
     def save(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, "SAVE")
 
@@ -190,6 +193,8 @@ class WebConfigApp:
             "socd": payload.get("socd"),
             "rate_khz": self._optional_int(payload, "rate_khz"),
             "key": payload.get("key"),
+            "button": payload.get("button"),
+            "pin": self._optional_int(payload, "pin"),
             "rest": self._optional_int(payload, "rest"),
             "bottom": self._optional_int(payload, "bottom"),
             "press": self._optional_int(payload, "press"),
@@ -209,6 +214,7 @@ class WebConfigApp:
             "/api/ping": self.ping,
             "/api/settings": self.settings,
             "/api/sample": self.sample,
+            "/api/pins": self.pins,
             "/api/calibrate": self.calibrate,
             "/api/set": self.set_values,
             "/api/save": self.save,

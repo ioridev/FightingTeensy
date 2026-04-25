@@ -152,6 +152,54 @@ main {
   margin-bottom: 8px;
 }
 
+.button-panel {
+  margin-top: 14px;
+}
+
+.pin-scan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 46px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.pin-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #8fb8ae;
+  border-radius: 6px;
+  background: #edf8f5;
+  color: #10483f;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.button-pin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.button-pin-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
 .metric {
   display: flex;
   justify-content: space-between;
@@ -251,6 +299,7 @@ label.field input {
   }
 
   .sample-grid,
+  .button-pin-grid,
   .direction-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -263,7 +312,12 @@ label.field input {
   }
 
   .sample-grid,
+  .button-pin-grid,
   .direction-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .button-pin-card {
     grid-template-columns: 1fr;
   }
 

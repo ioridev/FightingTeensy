@@ -93,6 +93,26 @@ SOCD_MODE = {
     "up-priority": 1,
 }
 
+BUTTON_INDEX = {
+    "a": "a",
+    "b": "b",
+    "x": "x",
+    "y": "y",
+    "lb": "lb",
+    "rb": "rb",
+    "back": "back",
+    "start": "start",
+    "l3": "l3",
+    "r3": "r3",
+    "logo": "logo",
+    "home": "logo",
+    "xbox": "logo",
+    "lt": "lt",
+    "trigger_l": "lt",
+    "rt": "rt",
+    "trigger_r": "rt",
+}
+
 
 def _key_index(value: str) -> int:
     key = value.lower()
@@ -108,6 +128,13 @@ def _socd_mode(value: str) -> int:
     return SOCD_MODE[mode]
 
 
+def _button_name(value: str) -> str:
+    button = value.lower()
+    if button not in BUTTON_INDEX:
+        raise ValueError(f"unknown button: {value}")
+    return BUTTON_INDEX[button]
+
+
 def _append_optional(tokens: list[str], name: str, value: object) -> None:
     if value is not None:
         tokens.append(f"{name}={value}")
@@ -118,6 +145,7 @@ def command_for_action(action: str, **options: object) -> str:
         "ping": "PING",
         "get": "GET",
         "sample": "SAMPLE",
+        "pins": "PINS",
         "cal-rest": "CAL REST",
         "save": "SAVE",
         "reset": "RESET",
@@ -132,6 +160,13 @@ def command_for_action(action: str, **options: object) -> str:
         if socd is not None:
             tokens.append(f"socd={_socd_mode(str(socd))}")
         _append_optional(tokens, "rate_khz", options.get("rate_khz"))
+
+        button = options.get("button")
+        pin = options.get("pin")
+        if button is not None or pin is not None:
+            if button is None or pin is None:
+                raise ValueError("button pin setting requires button and pin")
+            tokens.append(f"btn_{_button_name(str(button))}_pin={pin}")
 
         key = options.get("key")
         if key is not None:
@@ -192,12 +227,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--baud", type=int, default=115200)
 
     subparsers = parser.add_subparsers(dest="action", required=True)
-    for action in ("ping", "get", "sample", "cal-rest", "save", "reset", "bootloader"):
+    for action in ("ping", "get", "sample", "pins", "cal-rest", "save", "reset", "bootloader"):
         subparsers.add_parser(action)
 
     set_parser = subparsers.add_parser("set")
     set_parser.add_argument("--socd", choices=sorted(SOCD_MODE), help="SOCD mode")
     set_parser.add_argument("--rate-khz", type=int, choices=(1, 2, 4, 8))
+    set_parser.add_argument("--button", choices=sorted(BUTTON_INDEX))
+    set_parser.add_argument("--pin", type=int)
     set_parser.add_argument("--key", choices=sorted(KEY_INDEX))
     set_parser.add_argument("--rest", type=int)
     set_parser.add_argument("--bottom", type=int)
@@ -230,6 +267,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                         "set",
                         socd=args.socd,
                         rate_khz=args.rate_khz,
+                        button=args.button,
+                        pin=args.pin,
                         key=args.key,
                         rest=args.rest,
                         bottom=args.bottom,

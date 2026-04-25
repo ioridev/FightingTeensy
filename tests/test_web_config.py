@@ -69,6 +69,37 @@ class WebConfigAppTests(unittest.TestCase):
             ["SET key2_press=70 key2_release=35 key2_rapid=18 key2_active_low=1"],
         )
 
+    def test_set_applies_digital_button_pin(self):
+        devices = []
+
+        def factory(port, baud):
+            device = FakeDevice(["OK set"])
+            devices.append(device)
+            return device
+
+        app = WebConfigApp(default_port="COM7", device_factory=factory)
+
+        result = app.set_values({"button": "start", "pin": 6})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(devices[0].commands, ["SET btn_start_pin=6"])
+
+    def test_reads_pressed_pin_scan(self):
+        devices = []
+
+        def factory(port, baud):
+            device = FakeDevice(["PINS pin4=0 pin5=0 pin6=1 pin7=0"])
+            devices.append(device)
+            return device
+
+        app = WebConfigApp(default_port="COM7", device_factory=factory)
+
+        result = app.pins({})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["response"]["fields"]["pin6"], "1")
+        self.assertEqual(devices[0].commands, ["PINS"])
+
     def test_reports_serial_errors_as_json_safe_failures(self):
         def factory(port, baud):
             raise RuntimeError("port busy")

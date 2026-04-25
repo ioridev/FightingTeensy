@@ -3,6 +3,19 @@
 #include <EEPROM.h>
 
 namespace {
+constexpr uint16_t FT_SETTINGS_VERSION_V1 = 1;
+
+struct ControllerSettingsV1 {
+  uint32_t magic;
+  uint16_t version;
+  uint16_t size;
+  KeyCalibration keys[FT_KEY_COUNT];
+  uint8_t socdMode;
+  uint8_t reportRateKhz;
+  uint16_t reserved;
+  uint16_t crc;
+};
+
 bool isAllowedReportRate(uint8_t rateKhz) {
   return rateKhz == 1 || rateKhz == 2 || rateKhz == 4 || rateKhz == 8;
 }
@@ -24,6 +37,71 @@ bool validateKeyCalibration(const KeyCalibration &key) {
     return false;
   }
   return true;
+}
+
+bool isHallPin(uint8_t pin) {
+  return pin >= 14 && pin <= 17;
+}
+
+bool validateButtonPin(uint8_t pin) {
+  return pin <= 33 && !isHallPin(pin);
+}
+
+bool validateButtonPins(const uint8_t *pins) {
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    if (!validateButtonPin(pins[i])) {
+      return false;
+    }
+    for (uint8_t j = static_cast<uint8_t>(i + 1); j < FT_BUTTON_COUNT; ++j) {
+      if (pins[i] == pins[j]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool validateSettingsV1(const ControllerSettingsV1 &settings) {
+  if (settings.magic != FT_SETTINGS_MAGIC) {
+    return false;
+  }
+  if (settings.version != FT_SETTINGS_VERSION_V1) {
+    return false;
+  }
+  if (settings.size != sizeof(ControllerSettingsV1)) {
+    return false;
+  }
+
+  ControllerSettingsV1 copy = settings;
+  const uint16_t expected = copy.crc;
+  copy.crc = 0;
+  if (ftCrc16(reinterpret_cast<const uint8_t *>(&copy), sizeof(copy)) != expected) {
+    return false;
+  }
+
+  if (settings.socdMode > SOCD_UP_PRIORITY) {
+    return false;
+  }
+  if (!isAllowedReportRate(settings.reportRateKhz)) {
+    return false;
+  }
+  for (uint8_t i = 0; i < FT_KEY_COUNT; ++i) {
+    if (!validateKeyCalibration(settings.keys[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void migrateSettingsV1(const ControllerSettingsV1 &oldSettings, ControllerSettings &settings) {
+  loadDefaultSettings(settings);
+  for (uint8_t i = 0; i < FT_KEY_COUNT; ++i) {
+    settings.keys[i] = oldSettings.keys[i];
+  }
+  settings.socdMode = oldSettings.socdMode;
+  settings.reportRateKhz = oldSettings.reportRateKhz;
+  finalizeSettings(settings);
 }
 }
 
@@ -59,7 +137,12 @@ void loadDefaultSettings(ControllerSettings &settings) {
 
   settings.socdMode = SOCD_NEUTRAL;
   settings.reportRateKhz = 8;
-  settings.reserved = 0;
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    settings.buttonPins[i] = FT_DEFAULT_BUTTON_PINS[i];
+  }
+  for (uint8_t i = 0; i < sizeof(settings.reserved); ++i) {
+    settings.reserved[i] = 0;
+  }
   finalizeSettings(settings);
 }
 
@@ -87,6 +170,9 @@ bool validateSettings(const ControllerSettings &settings) {
   if (!isAllowedReportRate(settings.reportRateKhz)) {
     return false;
   }
+  if (!validateButtonPins(settings.buttonPins)) {
+    return false;
+  }
   for (uint8_t i = 0; i < FT_KEY_COUNT; ++i) {
     if (!validateKeyCalibration(settings.keys[i])) {
       return false;
@@ -107,6 +193,13 @@ void finalizeSettings(ControllerSettings &settings) {
 bool loadSettingsFromEeprom(ControllerSettings &settings) {
   EEPROM.get(FT_EEPROM_ADDRESS, settings);
   if (validateSettings(settings)) {
+    return true;
+  }
+
+  ControllerSettingsV1 oldSettings;
+  EEPROM.get(FT_EEPROM_ADDRESS, oldSettings);
+  if (validateSettingsV1(oldSettings)) {
+    migrateSettingsV1(oldSettings, settings);
     return true;
   }
 

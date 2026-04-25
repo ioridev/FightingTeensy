@@ -7,21 +7,16 @@
 #include "magnetic_key.h"
 #include "settings.h"
 
-constexpr uint8_t PIN_BUTTON_A = 11;
-constexpr uint8_t PIN_BUTTON_B = 12;
-constexpr uint8_t PIN_BUTTON_X = 8;
-constexpr uint8_t PIN_BUTTON_Y = 7;
-constexpr uint8_t PIN_BUTTON_LB = 10;
-constexpr uint8_t PIN_BUTTON_RB = 9;
-constexpr uint8_t PIN_BUTTON_BACK = 5;
-constexpr uint8_t PIN_BUTTON_START = 6;
-constexpr uint8_t PIN_BUTTON_L3 = 18;
-constexpr uint8_t PIN_BUTTON_R3 = 19;
-constexpr uint8_t PIN_BUTTON_LOGO = 4;
-constexpr uint8_t PIN_TRIGGER_L = 20;
-constexpr uint8_t PIN_TRIGGER_R = 21;
-
 constexpr uint8_t HALL_PINS[FT_KEY_COUNT] = {14, 15, 16, 17};
+constexpr uint8_t DIGITAL_SCAN_PINS[] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+    18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33,
+};
+constexpr const char *BUTTON_SETTING_NAMES[FT_BUTTON_COUNT] = {
+    "a", "b", "x", "y", "lb", "rb", "back", "start", "l3", "r3", "logo", "lt", "rt",
+};
+
 ControllerSettings settings;
 MagneticKey dpadKeys[FT_KEY_COUNT];
 
@@ -39,24 +34,22 @@ void beginDigitalButton(uint8_t pin) {
 }
 
 void beginInputs() {
-  beginDigitalButton(PIN_BUTTON_A);
-  beginDigitalButton(PIN_BUTTON_B);
-  beginDigitalButton(PIN_BUTTON_X);
-  beginDigitalButton(PIN_BUTTON_Y);
-  beginDigitalButton(PIN_BUTTON_LB);
-  beginDigitalButton(PIN_BUTTON_RB);
-  beginDigitalButton(PIN_BUTTON_BACK);
-  beginDigitalButton(PIN_BUTTON_START);
-  beginDigitalButton(PIN_BUTTON_L3);
-  beginDigitalButton(PIN_BUTTON_R3);
-  beginDigitalButton(PIN_BUTTON_LOGO);
-  beginDigitalButton(PIN_TRIGGER_L);
-  beginDigitalButton(PIN_TRIGGER_R);
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    beginDigitalButton(settings.buttonPins[i]);
+  }
 
   for (uint8_t i = 0; i < FT_KEY_COUNT; ++i) {
     dpadKeys[i].begin(HALL_PINS[i], &settings.keys[i]);
   }
 }
+
+#if defined(FIGHTING_TEENSY_CONFIG_MODE)
+void beginDigitalPinScan() {
+  for (uint8_t i = 0; i < sizeof(DIGITAL_SCAN_PINS); ++i) {
+    beginDigitalButton(DIGITAL_SCAN_PINS[i]);
+  }
+}
+#endif
 
 uint32_t reportIntervalUs() {
   return 1000UL / settings.reportRateKhz;
@@ -79,7 +72,7 @@ void applySocd(bool &up, bool &down, bool &left, bool &right) {
 }
 
 #if defined(FIGHTING_TEENSY_CONFIG_MODE)
-constexpr uint16_t CONFIG_COMMAND_MAX_LENGTH = 160;
+constexpr uint16_t CONFIG_COMMAND_MAX_LENGTH = 240;
 
 String commandLine;
 
@@ -142,6 +135,24 @@ void printSettings() {
     Serial.print(i);
     Serial.print("_active_low=");
     Serial.print(settings.keys[i].activeLow);
+  }
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    Serial.print(" btn_");
+    Serial.print(BUTTON_SETTING_NAMES[i]);
+    Serial.print("_pin=");
+    Serial.print(settings.buttonPins[i]);
+  }
+  Serial.println();
+}
+
+void printDigitalPins() {
+  Serial.print("PINS");
+  for (uint8_t i = 0; i < sizeof(DIGITAL_SCAN_PINS); ++i) {
+    const uint8_t pin = DIGITAL_SCAN_PINS[i];
+    Serial.print(" pin");
+    Serial.print(pin);
+    Serial.print("=");
+    Serial.print(readButton(pin) ? 1 : 0);
   }
   Serial.println();
 }
@@ -231,6 +242,35 @@ bool applySettingToken(const String &token) {
       return false;
     }
     settings.reportRateKhz = rate;
+    return true;
+  }
+
+  if (name.startsWith("BTN_") && name.endsWith("_PIN")) {
+    const String buttonName = name.substring(4, name.length() - 4);
+    uint8_t buttonIndex = FT_BUTTON_COUNT;
+    for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+      String expected(BUTTON_SETTING_NAMES[i]);
+      expected.toUpperCase();
+      if (buttonName == expected) {
+        buttonIndex = i;
+        break;
+      }
+    }
+    if (buttonIndex >= FT_BUTTON_COUNT) {
+      return false;
+    }
+
+    uint8_t pin = 0;
+    if (!parseUint8(value, pin) || pin > 33 || (pin >= 14 && pin <= 17)) {
+      return false;
+    }
+    for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+      if (i != buttonIndex && settings.buttonPins[i] == pin) {
+        return false;
+      }
+    }
+    settings.buttonPins[buttonIndex] = pin;
+    beginDigitalButton(pin);
     return true;
   }
 
@@ -358,6 +398,8 @@ void handleCommand(String line) {
     printSettings();
   } else if (line == "SAMPLE") {
     printSample();
+  } else if (line == "PINS") {
+    printDigitalPins();
   } else if (line.startsWith("CAL ")) {
     handleCalCommand(line);
   } else if (line.startsWith("SET ")) {
@@ -387,7 +429,7 @@ void setup() {
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
   delay(30);
-  if (readButton(PIN_BUTTON_START)) {
+  if (readButton(settings.buttonPins[FT_BUTTON_START])) {
     rebootToBootloader();
   }
   XInput.setAutoSend(false);
@@ -395,6 +437,7 @@ void setup() {
 #endif
 
 #if defined(FIGHTING_TEENSY_CONFIG_MODE)
+  beginDigitalPinScan();
   Serial.begin(115200);
   commandLine.reserve(CONFIG_COMMAND_MAX_LENGTH);
   while (!Serial && millis() < 1500) {
@@ -445,19 +488,19 @@ void loop() {
   bool dpadRight = right;
   applySocd(dpadUp, dpadDown, dpadLeft, dpadRight);
 
-  XInput.setButton(BUTTON_A, readButton(PIN_BUTTON_A));
-  XInput.setButton(BUTTON_B, readButton(PIN_BUTTON_B));
-  XInput.setButton(BUTTON_X, readButton(PIN_BUTTON_X));
-  XInput.setButton(BUTTON_Y, readButton(PIN_BUTTON_Y));
-  XInput.setButton(BUTTON_LB, readButton(PIN_BUTTON_LB));
-  XInput.setButton(BUTTON_RB, readButton(PIN_BUTTON_RB));
-  XInput.setButton(BUTTON_BACK, readButton(PIN_BUTTON_BACK));
-  XInput.setButton(BUTTON_START, readButton(PIN_BUTTON_START));
-  XInput.setButton(BUTTON_L3, readButton(PIN_BUTTON_L3));
-  XInput.setButton(BUTTON_R3, readButton(PIN_BUTTON_R3));
-  XInput.setButton(TRIGGER_LEFT, readButton(PIN_TRIGGER_L));
-  XInput.setButton(TRIGGER_RIGHT, readButton(PIN_TRIGGER_R));
-  XInput.setButton(BUTTON_LOGO, readButton(PIN_BUTTON_LOGO));
+  XInput.setButton(BUTTON_A, readButton(settings.buttonPins[FT_BUTTON_A]));
+  XInput.setButton(BUTTON_B, readButton(settings.buttonPins[FT_BUTTON_B]));
+  XInput.setButton(BUTTON_X, readButton(settings.buttonPins[FT_BUTTON_X]));
+  XInput.setButton(BUTTON_Y, readButton(settings.buttonPins[FT_BUTTON_Y]));
+  XInput.setButton(BUTTON_LB, readButton(settings.buttonPins[FT_BUTTON_LB]));
+  XInput.setButton(BUTTON_RB, readButton(settings.buttonPins[FT_BUTTON_RB]));
+  XInput.setButton(BUTTON_BACK, readButton(settings.buttonPins[FT_BUTTON_BACK]));
+  XInput.setButton(BUTTON_START, readButton(settings.buttonPins[FT_BUTTON_START]));
+  XInput.setButton(BUTTON_L3, readButton(settings.buttonPins[FT_BUTTON_L3]));
+  XInput.setButton(BUTTON_R3, readButton(settings.buttonPins[FT_BUTTON_R3]));
+  XInput.setButton(TRIGGER_LEFT, readButton(settings.buttonPins[FT_BUTTON_LT]));
+  XInput.setButton(TRIGGER_RIGHT, readButton(settings.buttonPins[FT_BUTTON_RT]));
+  XInput.setButton(BUTTON_LOGO, readButton(settings.buttonPins[FT_BUTTON_LOGO]));
   XInput.setDpad(dpadUp, dpadDown, dpadLeft, dpadRight);
   XInput.send();
 #endif

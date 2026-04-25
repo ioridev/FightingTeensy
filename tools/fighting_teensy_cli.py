@@ -76,7 +76,44 @@ class FightingTeensySerial:
         raise TimeoutError(f"no response for command: {command}")
 
 
-def command_for_action(action: str) -> str:
+KEY_INDEX = {
+    "up": 0,
+    "down": 1,
+    "left": 2,
+    "right": 3,
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+}
+
+SOCD_MODE = {
+    "neutral": 0,
+    "up": 1,
+    "up-priority": 1,
+}
+
+
+def _key_index(value: str) -> int:
+    key = value.lower()
+    if key not in KEY_INDEX:
+        raise ValueError(f"unknown key: {value}")
+    return KEY_INDEX[key]
+
+
+def _socd_mode(value: str) -> int:
+    mode = value.lower()
+    if mode not in SOCD_MODE:
+        raise ValueError(f"unknown SOCD mode: {value}")
+    return SOCD_MODE[mode]
+
+
+def _append_optional(tokens: list[str], name: str, value: object) -> None:
+    if value is not None:
+        tokens.append(f"{name}={value}")
+
+
+def command_for_action(action: str, **options: object) -> str:
     commands = {
         "ping": "PING",
         "get": "GET",
@@ -85,7 +122,41 @@ def command_for_action(action: str) -> str:
         "save": "SAVE",
         "reset": "RESET",
     }
-    return commands[action]
+    if action in commands:
+        return commands[action]
+
+    if action == "set":
+        tokens = ["SET"]
+        socd = options.get("socd")
+        if socd is not None:
+            tokens.append(f"socd={_socd_mode(str(socd))}")
+        _append_optional(tokens, "rate_khz", options.get("rate_khz"))
+
+        key = options.get("key")
+        if key is not None:
+            index = _key_index(str(key))
+            _append_optional(tokens, f"key{index}_rest", options.get("rest"))
+            _append_optional(tokens, f"key{index}_bottom", options.get("bottom"))
+            _append_optional(tokens, f"key{index}_press", options.get("press"))
+            _append_optional(tokens, f"key{index}_release", options.get("release"))
+            _append_optional(tokens, f"key{index}_rapid", options.get("rapid"))
+            _append_optional(tokens, f"key{index}_active_low", options.get("active_low"))
+
+        if len(tokens) == 1:
+            raise ValueError("set requires at least one setting")
+        return " ".join(tokens)
+
+    if action == "cal-key":
+        key = options.get("key")
+        point = options.get("point")
+        if key is None or point is None:
+            raise ValueError("cal-key requires key and point")
+        point_text = str(point).upper()
+        if point_text not in ("REST", "BOTTOM"):
+            raise ValueError(f"unknown calibration point: {point}")
+        return f"CAL KEY {_key_index(str(key))} {point_text}"
+
+    raise KeyError(action)
 
 
 def run_once(port: str, action: str, baud: int) -> int:
@@ -123,6 +194,21 @@ def build_parser() -> argparse.ArgumentParser:
     for action in ("ping", "get", "sample", "cal-rest", "save", "reset"):
         subparsers.add_parser(action)
 
+    set_parser = subparsers.add_parser("set")
+    set_parser.add_argument("--socd", choices=sorted(SOCD_MODE), help="SOCD mode")
+    set_parser.add_argument("--rate-khz", type=int, choices=(1, 2, 4, 8))
+    set_parser.add_argument("--key", choices=sorted(KEY_INDEX))
+    set_parser.add_argument("--rest", type=int)
+    set_parser.add_argument("--bottom", type=int)
+    set_parser.add_argument("--press", type=int)
+    set_parser.add_argument("--release", type=int)
+    set_parser.add_argument("--rapid", type=int)
+    set_parser.add_argument("--active-low", type=int, choices=(0, 1))
+
+    cal_key_parser = subparsers.add_parser("cal-key")
+    cal_key_parser.add_argument("--key", required=True, choices=sorted(KEY_INDEX))
+    cal_key_parser.add_argument("--point", required=True, choices=("rest", "bottom"))
+
     monitor_parser = subparsers.add_parser("monitor")
     monitor_parser.add_argument("--interval", type=float, default=0.1)
     return parser
@@ -133,14 +219,44 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-      if args.action == "monitor":
-          return monitor(args.port, args.baud, args.interval)
-      return run_once(args.port, args.action, args.baud)
+        if args.action == "monitor":
+            return monitor(args.port, args.baud, args.interval)
+        if args.action == "set":
+            device = FightingTeensySerial(port=args.port, baud=args.baud)
+            try:
+                response = device.command(
+                    command_for_action(
+                        "set",
+                        socd=args.socd,
+                        rate_khz=args.rate_khz,
+                        key=args.key,
+                        rest=args.rest,
+                        bottom=args.bottom,
+                        press=args.press,
+                        release=args.release,
+                        rapid=args.rapid,
+                        active_low=args.active_low,
+                    )
+                )
+                print(response_to_table(response))
+                return 0
+            finally:
+                device.close()
+        if args.action == "cal-key":
+            device = FightingTeensySerial(port=args.port, baud=args.baud)
+            try:
+                response = device.command(
+                    command_for_action("cal-key", key=args.key, point=args.point)
+                )
+                print(response_to_table(response))
+                return 0
+            finally:
+                device.close()
+        return run_once(args.port, args.action, args.baud)
     except Exception as exc:
-      print(f"error: {exc}", file=sys.stderr)
-      return 1
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

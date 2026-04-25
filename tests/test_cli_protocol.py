@@ -32,7 +32,41 @@ class ProtocolParsingTests(unittest.TestCase):
         self.assertEqual(command_for_action("cal-rest"), "CAL REST")
         self.assertEqual(command_for_action("reset"), "RESET")
 
+    def test_set_command_builds_key_value_protocol(self):
+        command = command_for_action(
+            "set",
+            socd="up",
+            rate_khz=8,
+            key="left",
+            press=72,
+            release=40,
+            rapid=24,
+            active_low=1,
+        )
+
+        self.assertEqual(
+            command,
+            "SET socd=1 rate_khz=8 key2_press=72 key2_release=40 key2_rapid=24 key2_active_low=1",
+        )
+
+    def test_cal_key_command_builds_named_key_protocol(self):
+        self.assertEqual(
+            command_for_action("cal-key", key="right", point="bottom"),
+            "CAL KEY 3 BOTTOM",
+        )
+
+    def test_set_requires_at_least_one_setting(self):
+        with self.assertRaises(ValueError):
+            command_for_action("set")
+
+    def test_set_rejects_unknown_key(self):
+        with self.assertRaises(ValueError):
+            command_for_action("set", key="north", press=80)
+
+    def test_cal_key_rejects_unknown_point(self):
+        with self.assertRaises(ValueError):
+            command_for_action("cal-key", key="up", point="middle")
+
 
 if __name__ == "__main__":
     unittest.main()
-

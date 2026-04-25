@@ -1,7 +1,9 @@
 from pathlib import Path
+import os
 import shutil
 
 Import("env")
+from SCons.Script import COMMAND_LINE_TARGETS, Exit
 
 
 CORE_FILES = (
@@ -34,6 +36,14 @@ framework_dir = Path(env.PioPlatform().get_package_dir("framework-arduinoteensy"
 destination_dir = framework_dir / "cores" / "teensy4"
 
 if pio_env == "teensy40_xinput":
+    if "upload" in COMMAND_LINE_TARGETS and os.environ.get("FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD") != "1":
+        print(
+            "Refusing to upload teensy40_xinput without "
+            "FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD=1. "
+            "Builds are allowed; flash teensy40_config_serial for recovery/config work."
+        )
+        Exit(1)
+
     source_dir = project_dir / "third_party" / "ArduinoXInput_Teensy" / "teensy" / "avr" / "cores" / "teensy4"
     files = CORE_FILES + XINPUT_ONLY_FILES
     mode = "XInput"

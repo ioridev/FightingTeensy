@@ -22,8 +22,6 @@ constexpr uint8_t PIN_TRIGGER_L = 20;
 constexpr uint8_t PIN_TRIGGER_R = 21;
 
 constexpr uint8_t HALL_PINS[FT_KEY_COUNT] = {14, 15, 16, 17};
-constexpr uint32_t REPORT_INTERVAL_US = 125;
-
 ControllerSettings settings;
 MagneticKey dpadKeys[FT_KEY_COUNT];
 
@@ -55,6 +53,10 @@ void beginInputs() {
   }
 }
 
+uint32_t reportIntervalUs() {
+  return 1000UL / settings.reportRateKhz;
+}
+
 void applySocd(bool &up, bool &down, bool &left, bool &right) {
   if (left && right) {
     left = false;
@@ -72,7 +74,37 @@ void applySocd(bool &up, bool &down, bool &left, bool &right) {
 }
 
 #if defined(FIGHTING_TEENSY_CONFIG_MODE)
+constexpr uint16_t CONFIG_COMMAND_MAX_LENGTH = 160;
+
 String commandLine;
+
+bool parseUint16(const String &value, uint16_t &out) {
+  if (value.length() == 0) {
+    return false;
+  }
+  for (uint16_t i = 0; i < value.length(); ++i) {
+    if (!isDigit(value[i])) {
+      return false;
+    }
+  }
+
+  const long parsed = value.toInt();
+  if (parsed < 0 || parsed > 1023) {
+    return false;
+  }
+
+  out = static_cast<uint16_t>(parsed);
+  return true;
+}
+
+bool parseUint8(const String &value, uint8_t &out) {
+  uint16_t parsed = 0;
+  if (!parseUint16(value, parsed) || parsed > 255) {
+    return false;
+  }
+  out = static_cast<uint8_t>(parsed);
+  return true;
+}
 
 void printSettings() {
   Serial.print("SETTINGS");
@@ -101,6 +133,10 @@ void printSettings() {
     Serial.print(i);
     Serial.print("_rapid=");
     Serial.print(settings.keys[i].rapidTriggerOffset);
+    Serial.print(" key");
+    Serial.print(i);
+    Serial.print("_active_low=");
+    Serial.print(settings.keys[i].activeLow);
   }
   Serial.println();
 }
@@ -121,6 +157,34 @@ void printSample() {
   Serial.println();
 }
 
+void calibrateKeyPoint(uint8_t keyIndex, bool bottom, uint16_t samples) {
+  if (keyIndex >= FT_KEY_COUNT) {
+    Serial.println("ERR invalid_key");
+    return;
+  }
+
+  uint32_t sum = 0;
+  for (uint16_t sample = 0; sample < samples; ++sample) {
+    sum += analogRead(HALL_PINS[keyIndex]);
+    delay(1);
+  }
+
+  const uint16_t value = static_cast<uint16_t>(sum / samples);
+  if (bottom) {
+    settings.keys[keyIndex].bottom = value;
+  } else {
+    settings.keys[keyIndex].rest = value;
+  }
+
+  finalizeSettings(settings);
+  Serial.print("OK key_calibrated key=");
+  Serial.print(keyIndex);
+  Serial.print(" point=");
+  Serial.print(bottom ? "bottom" : "rest");
+  Serial.print(" value=");
+  Serial.println(value);
+}
+
 void calibrateRest(uint16_t samples) {
   uint32_t sums[FT_KEY_COUNT] = {0, 0, 0, 0};
   for (uint16_t sample = 0; sample < samples; ++sample) {
@@ -137,6 +201,148 @@ void calibrateRest(uint16_t samples) {
   Serial.println("OK rest_calibrated");
 }
 
+bool applySettingToken(const String &token) {
+  const int tokenLength = static_cast<int>(token.length());
+  const int equals = token.indexOf('=');
+  if (equals <= 0 || equals >= tokenLength - 1) {
+    return false;
+  }
+
+  const String name = token.substring(0, equals);
+  const String value = token.substring(equals + 1);
+
+  if (name == "SOCD") {
+    uint8_t mode = 0;
+    if (!parseUint8(value, mode) || mode > SOCD_UP_PRIORITY) {
+      return false;
+    }
+    settings.socdMode = mode;
+    return true;
+  }
+
+  if (name == "RATE_KHZ") {
+    uint8_t rate = 0;
+    if (!parseUint8(value, rate) || !(rate == 1 || rate == 2 || rate == 4 || rate == 8)) {
+      return false;
+    }
+    settings.reportRateKhz = rate;
+    return true;
+  }
+
+  if (!name.startsWith("KEY") || name.length() < 6 || !isDigit(name[3]) || name[4] != '_') {
+    return false;
+  }
+
+  const uint8_t keyIndex = static_cast<uint8_t>(name[3] - '0');
+  if (keyIndex >= FT_KEY_COUNT) {
+    return false;
+  }
+
+  const String field = name.substring(5);
+  KeyCalibration &key = settings.keys[keyIndex];
+
+  if (field == "ACTIVE_LOW") {
+    uint8_t activeLow = 0;
+    if (!parseUint8(value, activeLow) || activeLow > 1) {
+      return false;
+    }
+    key.activeLow = activeLow;
+    return true;
+  }
+
+  uint16_t parsed = 0;
+  if (!parseUint16(value, parsed)) {
+    return false;
+  }
+
+  if (field == "REST") {
+    key.rest = parsed;
+  } else if (field == "BOTTOM") {
+    key.bottom = parsed;
+  } else if (field == "PRESS") {
+    key.pressOffset = parsed;
+  } else if (field == "RELEASE") {
+    key.releaseOffset = parsed;
+  } else if (field == "RAPID") {
+    key.rapidTriggerOffset = parsed;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
+void handleSetCommand(const String &line) {
+  const int lineLength = static_cast<int>(line.length());
+  int start = 4;
+  bool changed = false;
+
+  while (start < lineLength) {
+    while (start < lineLength && line[start] == ' ') {
+      ++start;
+    }
+    if (start >= lineLength) {
+      break;
+    }
+
+    int end = line.indexOf(' ', start);
+    if (end < 0) {
+      end = lineLength;
+    }
+
+    const String token = line.substring(start, end);
+    if (!applySettingToken(token)) {
+      Serial.print("ERR bad_setting ");
+      Serial.println(token);
+      return;
+    }
+    changed = true;
+    start = end + 1;
+  }
+
+  if (!changed) {
+    Serial.println("ERR no_settings");
+    return;
+  }
+
+  finalizeSettings(settings);
+  Serial.println("OK set");
+}
+
+void handleCalCommand(const String &line) {
+  if (line == "CAL REST") {
+    calibrateRest(250);
+    return;
+  }
+
+  if (!line.startsWith("CAL KEY ")) {
+    Serial.println("ERR bad_calibration_command");
+    return;
+  }
+
+  const int pointStart = line.lastIndexOf(' ');
+  if (pointStart <= 8) {
+    Serial.println("ERR bad_calibration_command");
+    return;
+  }
+
+  const String keyText = line.substring(8, pointStart);
+  const String point = line.substring(pointStart + 1);
+  uint8_t keyIndex = 0;
+  if (!parseUint8(keyText, keyIndex) || keyIndex >= FT_KEY_COUNT) {
+    Serial.println("ERR invalid_key");
+    return;
+  }
+
+  if (point == "REST") {
+    calibrateKeyPoint(keyIndex, false, 250);
+  } else if (point == "BOTTOM") {
+    calibrateKeyPoint(keyIndex, true, 250);
+  } else {
+    Serial.println("ERR invalid_point");
+  }
+}
+
 void handleCommand(String line) {
   line.trim();
   line.toUpperCase();
@@ -147,8 +353,10 @@ void handleCommand(String line) {
     printSettings();
   } else if (line == "SAMPLE") {
     printSample();
-  } else if (line == "CAL REST") {
-    calibrateRest(250);
+  } else if (line.startsWith("CAL ")) {
+    handleCalCommand(line);
+  } else if (line.startsWith("SET ")) {
+    handleSetCommand(line);
   } else if (line == "SAVE") {
     finalizeSettings(settings);
     saveSettingsToEeprom(settings);
@@ -175,7 +383,7 @@ void setup() {
 
 #if defined(FIGHTING_TEENSY_CONFIG_MODE)
   Serial.begin(115200);
-  commandLine.reserve(64);
+  commandLine.reserve(CONFIG_COMMAND_MAX_LENGTH);
   while (!Serial && millis() < 1500) {
   }
   Serial.println("OK FightingTeensy config");
@@ -191,7 +399,7 @@ void loop() {
         handleCommand(commandLine);
         commandLine = "";
       }
-    } else if (commandLine.length() < 63) {
+    } else if (commandLine.length() < CONFIG_COMMAND_MAX_LENGTH - 1) {
       commandLine += c;
     }
   }
@@ -199,7 +407,7 @@ void loop() {
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
   static elapsedMicros sinceReport;
-  if (sinceReport < REPORT_INTERVAL_US) {
+  if (sinceReport < reportIntervalUs()) {
     return;
   }
   sinceReport = 0;

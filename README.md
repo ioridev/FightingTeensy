@@ -6,8 +6,8 @@ This repository is a new-generation rewrite rather than a patch on top of `Preci
 
 ## Current Shape
 
-- `env:teensy40_xinput`: normal play firmware, built as XInput.
-- `env:teensy40_config_serial`: configuration firmware, built as USB Serial for the PC tool.
+- `env:teensy40_config_serial`: configuration firmware, built as USB Serial for the PC tool. This is the default environment.
+- `env:teensy40_xinput`: normal play firmware, built as XInput. Build is allowed, but upload is guarded.
 - EEPROM stores hall-sensor calibration and rapid-trigger settings.
 - The firmware sends XInput reports on a 125 us cadence in normal mode.
 - The PC tool can ping the board, read settings, sample hall values, calibrate rest positions, save, and reset.
@@ -38,6 +38,14 @@ pio run -e teensy40_xinput
 
 The XInput build applies the bundled Teensy core patch before compilation. The serial config build restores the bundled Teensyduino 1.60 originals before compilation. Without the XInput patch, ArduinoXInput falls back to debug output and the board will not behave as an XInput controller.
 
+XInput upload is intentionally blocked unless you opt in:
+
+```powershell
+$env:FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD = "1"
+pio run -e teensy40_xinput -t upload
+Remove-Item Env:\FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD
+```
+
 Build serial configuration firmware:
 
 ```powershell
@@ -65,6 +73,16 @@ Flash `teensy40_config_serial`, then run:
 python tools\fighting_teensy_cli.py --port COM7 ping
 python tools\fighting_teensy_cli.py --port COM7 sample
 python tools\fighting_teensy_cli.py --port COM7 cal-rest
+python tools\fighting_teensy_cli.py --port COM7 save
+```
+
+Tune SOCD, report rate, and per-direction hall thresholds:
+
+```powershell
+python tools\fighting_teensy_cli.py --port COM7 set --socd neutral --rate-khz 8
+python tools\fighting_teensy_cli.py --port COM7 set --key up --press 80 --release 45 --rapid 28 --active-low 1
+python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point rest
+python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point bottom
 python tools\fighting_teensy_cli.py --port COM7 save
 ```
 

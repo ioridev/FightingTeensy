@@ -2,6 +2,31 @@
 
 #include <EEPROM.h>
 
+namespace {
+bool isAllowedReportRate(uint8_t rateKhz) {
+  return rateKhz == 1 || rateKhz == 2 || rateKhz == 4 || rateKhz == 8;
+}
+
+bool isAdcRange(uint16_t value) {
+  return value <= 1023;
+}
+
+bool validateKeyCalibration(const KeyCalibration &key) {
+  if (!isAdcRange(key.rest) || !isAdcRange(key.bottom) ||
+      !isAdcRange(key.pressOffset) || !isAdcRange(key.releaseOffset) ||
+      !isAdcRange(key.rapidTriggerOffset)) {
+    return false;
+  }
+  if (key.activeLow > 1) {
+    return false;
+  }
+  if (key.releaseOffset > key.pressOffset) {
+    return false;
+  }
+  return true;
+}
+}
+
 uint16_t ftCrc16(const uint8_t *data, size_t length) {
   uint16_t crc = 0xFFFF;
   for (size_t i = 0; i < length; ++i) {
@@ -52,7 +77,23 @@ bool validateSettings(const ControllerSettings &settings) {
   ControllerSettings copy = settings;
   const uint16_t expected = copy.crc;
   copy.crc = 0;
-  return ftCrc16(reinterpret_cast<const uint8_t *>(&copy), sizeof(copy)) == expected;
+  if (ftCrc16(reinterpret_cast<const uint8_t *>(&copy), sizeof(copy)) != expected) {
+    return false;
+  }
+
+  if (settings.socdMode > SOCD_UP_PRIORITY) {
+    return false;
+  }
+  if (!isAllowedReportRate(settings.reportRateKhz)) {
+    return false;
+  }
+  for (uint8_t i = 0; i < FT_KEY_COUNT; ++i) {
+    if (!validateKeyCalibration(settings.keys[i])) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void finalizeSettings(ControllerSettings &settings) {
@@ -82,4 +123,3 @@ void resetSettingsInEeprom() {
   loadDefaultSettings(settings);
   saveSettingsToEeprom(settings);
 }
-

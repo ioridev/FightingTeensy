@@ -57,15 +57,23 @@ def patch_usb_serial_h(base: str) -> str:
 
 
 def _patch_usb_config_endpoint_guard(text: str) -> str:
-    old = "\tif (ep < 2 || ep > NUM_ENDPOINTS) return;"
-    new = (
+    ep_old = "\tif (ep < 2 || ep > NUM_ENDPOINTS) return;"
+    ep_new = (
         "#if defined(XINPUT_INTERFACE)\n"
         "\tif (ep < 1 || ep > NUM_ENDPOINTS) return;\n"
         "#else\n"
         "\tif (ep < 2 || ep > NUM_ENDPOINTS) return;\n"
         "#endif"
     )
-    return text.replace(old, new)
+    endpoint_old = "\tif (endpoint_number < 2 || endpoint_number > NUM_ENDPOINTS) return;"
+    endpoint_new = (
+        "#if defined(XINPUT_INTERFACE)\n"
+        "\tif (endpoint_number < 1 || endpoint_number > NUM_ENDPOINTS) return;\n"
+        "#else\n"
+        "\tif (endpoint_number < 2 || endpoint_number > NUM_ENDPOINTS) return;\n"
+        "#endif"
+    )
+    return text.replace(ep_old, ep_new).replace(endpoint_old, endpoint_new)
 
 
 def _patch_xinput_endpoint0_warning_suppression(text: str) -> str:

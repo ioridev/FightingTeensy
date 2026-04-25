@@ -406,6 +406,15 @@ void loop() {
 #endif
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
+  #if defined(FIGHTING_TEENSY_XINPUT_SELF_TEST)
+  const bool phase = (millis() / 500) % 2 == 0;
+  XInput.setButton(BUTTON_A, phase);
+  XInput.setButton(BUTTON_B, !phase);
+  XInput.setDpad(phase, false, false, !phase);
+  XInput.send();
+  return;
+  #endif
+
   static elapsedMicros sinceReport;
   if (sinceReport < reportIntervalUs()) {
     return;

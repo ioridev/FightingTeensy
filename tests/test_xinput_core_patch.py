@@ -38,6 +38,10 @@ class XInputCorePatchTests(unittest.TestCase):
             "{\n}\n"
             "void usb_config_rx(uint32_t ep, uint32_t packet_size, int do_zlp, void (*cb)(transfer_t *))\n"
             "{\n\tif (ep < 2 || ep > NUM_ENDPOINTS) return;\n}\n"
+            "void usb_receive(uint32_t endpoint_number, transfer_t *transfer)\n"
+            "{\n\tif (endpoint_number < 2 || endpoint_number > NUM_ENDPOINTS) return;\n}\n"
+            "void usb_transmit(uint32_t endpoint_number, transfer_t *transfer)\n"
+            "{\n\tif (endpoint_number < 2 || endpoint_number > NUM_ENDPOINTS) return;\n}\n"
         )
 
         patched = patch_usb_c(base)
@@ -47,6 +51,10 @@ class XInputCorePatchTests(unittest.TestCase):
         self.assertIn("usb_xinput_configure();", patched)
         self.assertIn("(void) endpoint0_buffer;", patched)
         self.assertIn("#if defined(XINPUT_INTERFACE)\n\tif (ep < 1 || ep > NUM_ENDPOINTS) return;", patched)
+        self.assertIn(
+            "#if defined(XINPUT_INTERFACE)\n\tif (endpoint_number < 1 || endpoint_number > NUM_ENDPOINTS) return;",
+            patched,
+        )
 
     def test_wprogram_and_usb_inst_expose_xinput_symbols(self):
         self.assertIn(

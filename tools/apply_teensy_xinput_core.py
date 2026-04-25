@@ -49,10 +49,12 @@ destination_dir = framework_dir / "cores" / "teensy4"
 teensyduino_source_dir = project_dir / "third_party" / "Teensyduino_1.60" / "cores" / "teensy4"
 arduino_xinput_source_dir = project_dir / "third_party" / "ArduinoXInput_Teensy" / "teensy" / "avr" / "cores" / "teensy4"
 
-if pio_env == "teensy40_xinput":
+is_xinput_env = pio_env.startswith("teensy40_xinput")
+
+if is_xinput_env:
     if "upload" in COMMAND_LINE_TARGETS and os.environ.get("FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD") != "1":
         print(
-            "Refusing to upload teensy40_xinput without "
+            f"Refusing to upload {pio_env} without "
             "FIGHTING_TEENSY_ALLOW_XINPUT_UPLOAD=1. "
             "Builds are allowed; flash teensy40_config_serial for recovery/config work."
         )
@@ -75,7 +77,7 @@ for name in files:
     if not source.exists():
         raise FileNotFoundError(source)
 
-    if pio_env == "teensy40_xinput":
+    if is_xinput_env:
         donor = None
         donor_path = arduino_xinput_source_dir / name
         if donor_path.exists():
@@ -88,7 +90,7 @@ for name in files:
     if file_changed:
         changed.append(name)
 
-if pio_env == "teensy40_xinput":
+if is_xinput_env:
     for name in XINPUT_ONLY_FILES:
         source = arduino_xinput_source_dir / name
         destination = destination_dir / name

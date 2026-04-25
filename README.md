@@ -36,7 +36,9 @@ Build normal firmware:
 pio run -e teensy40_xinput
 ```
 
-The XInput build applies the bundled Teensy core patch before compilation. The serial config build restores the bundled Teensyduino 1.60 originals before compilation. Without the XInput patch, ArduinoXInput falls back to debug output and the board will not behave as an XInput controller.
+The XInput build starts from the bundled Teensyduino 1.60 originals and applies a small XInput overlay before compilation. The serial config build restores the bundled Teensyduino 1.60 originals before compilation. Without the XInput overlay, ArduinoXInput falls back to debug output and the board will not behave as an XInput controller.
+
+The upstream XInput patch used by the original Precision Fighting Board fork was based on Teensyduino 1.58. FightingTeensy does not copy those core files wholesale into the PlatformIO Teensyduino 1.60 package; it ports only the XInput-specific descriptor and transport pieces.
 
 XInput upload is intentionally blocked unless you opt in:
 

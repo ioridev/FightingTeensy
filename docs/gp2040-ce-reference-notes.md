@@ -25,3 +25,9 @@ Near-term FightingTeensy direction:
 - Keep Serial config as the recovery-safe path.
 - Add a button-chord config entry later, but do not rely on it as the only recovery method.
 - Treat XInput flashing as opt-in until the Teensy XInput core patch is proven stable on the exact PlatformIO Teensyduino version.
+
+Precision Fighting Board XInput note:
+
+- `C:\Users\iori\src\Precision-Fighting-Board\x-input\ArduinoXInput_Teensy\README.md` and `boards.txt` identify the original XInput core baseline as Teensyduino 1.58.
+- PlatformIO currently provides Teensyduino 1.60, so FightingTeensy keeps the 1.60 core as the base and applies an XInput overlay at build time.
+- The overlay ports the XInput USB mode, descriptors, endpoint-1 support, and `usb_xinput.c/h`; unrelated 1.58 USB core behavior is not copied.

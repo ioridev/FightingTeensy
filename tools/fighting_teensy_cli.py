@@ -121,6 +121,7 @@ def command_for_action(action: str, **options: object) -> str:
         "cal-rest": "CAL REST",
         "save": "SAVE",
         "reset": "RESET",
+        "bootloader": "BOOTLOADER",
     }
     if action in commands:
         return commands[action]
@@ -191,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--baud", type=int, default=115200)
 
     subparsers = parser.add_subparsers(dest="action", required=True)
-    for action in ("ping", "get", "sample", "cal-rest", "save", "reset"):
+    for action in ("ping", "get", "sample", "cal-rest", "save", "reset", "bootloader"):
         subparsers.add_parser(action)
 
     set_parser = subparsers.add_parser("set")

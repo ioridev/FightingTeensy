@@ -31,6 +31,7 @@ class ProtocolParsingTests(unittest.TestCase):
         self.assertEqual(command_for_action("ping"), "PING")
         self.assertEqual(command_for_action("cal-rest"), "CAL REST")
         self.assertEqual(command_for_action("reset"), "RESET")
+        self.assertEqual(command_for_action("bootloader"), "BOOTLOADER")
 
     def test_set_command_builds_key_value_protocol(self):
         command = command_for_action(

@@ -25,6 +25,11 @@ constexpr uint8_t HALL_PINS[FT_KEY_COUNT] = {14, 15, 16, 17};
 ControllerSettings settings;
 MagneticKey dpadKeys[FT_KEY_COUNT];
 
+void rebootToBootloader() {
+  delay(20);
+  _reboot_Teensyduino_();
+}
+
 bool readButton(uint8_t pin) {
   return digitalRead(pin) == LOW;
 }
@@ -365,6 +370,10 @@ void handleCommand(String line) {
     loadDefaultSettings(settings);
     saveSettingsToEeprom(settings);
     Serial.println("OK reset");
+  } else if (line == "BOOTLOADER") {
+    Serial.println("OK bootloader");
+    Serial.flush();
+    rebootToBootloader();
   } else {
     Serial.print("ERR unknown_command ");
     Serial.println(line);
@@ -377,6 +386,10 @@ void setup() {
   beginInputs();
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
+  delay(30);
+  if (readButton(PIN_BUTTON_START)) {
+    rebootToBootloader();
+  }
   XInput.setAutoSend(false);
   XInput.begin();
 #endif

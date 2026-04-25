@@ -176,6 +176,15 @@ async function save() {
   log(data.response.text);
 }
 
+async function flashFirmware(target) {
+  setStatus(`Flashing ${target}...`);
+  log(`flash ${target} started`);
+  const data = await api("/api/flash", { target });
+  log(data.flash.log || `flash ${target} done`);
+  setStatus(`Flashed ${target}`);
+  await refreshPorts();
+}
+
 async function calRest() {
   const data = await api("/api/calibrate", { point: "rest" });
   log(data.response.text);
@@ -216,6 +225,8 @@ function bindEvents() {
   document.querySelector("#ping").addEventListener("click", () => ping().catch(handleError));
   document.querySelector("#load").addEventListener("click", () => loadSettings().catch(handleError));
   document.querySelector("#save").addEventListener("click", () => save().catch(handleError));
+  document.querySelector("#flashConfig").addEventListener("click", () => flashFirmware("config").catch(handleError));
+  document.querySelector("#returnXinput").addEventListener("click", () => flashFirmware("xinput").catch(handleError));
   document.querySelector("#sample").addEventListener("click", () => sample().catch(handleError));
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());
   document.querySelector("#calRest").addEventListener("click", () => calRest().catch(handleError));

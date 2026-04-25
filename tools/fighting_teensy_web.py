@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import subprocess
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional, Sequence
 
 try:
     from .fighting_teensy_cli import (
@@ -27,6 +29,7 @@ except ImportError:
 JsonDict = Dict[str, Any]
 DeviceFactory = Callable[[str, int], Any]
 PortLister = Callable[[], Iterable[JsonDict]]
+CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 def response_to_json(response: DeviceResponse) -> JsonDict:
@@ -53,6 +56,85 @@ def default_port_lister() -> Iterable[JsonDict]:
     ]
 
 
+class FirmwareFlasher:
+    TARGETS = {
+        "config": "teensy40_config_serial",
+        "xinput": "teensy40_xinput",
+    }
+
+    def __init__(
+        self,
+        project_dir: Optional[Path] = None,
+        baud: int = 115200,
+        runner: CommandRunner = subprocess.run,
+        device_factory: DeviceFactory = FightingTeensySerial,
+    ) -> None:
+        self.project_dir = project_dir or Path(__file__).resolve().parents[1]
+        self.baud = baud
+        self._runner = runner
+        self._device_factory = device_factory
+
+    def flash(self, target: str, port: Optional[str] = None) -> JsonDict:
+        if target not in self.TARGETS:
+            raise ValueError(f"unknown firmware target: {target}")
+
+        env = self.TARGETS[target]
+        log = []
+        log.append(self._run(["pio", "run", "-e", env], timeout=120))
+
+        if target == "xinput" and port:
+            self._request_bootloader(port)
+            time.sleep(0.8)
+
+        firmware = self.project_dir / ".pio" / "build" / env / "firmware.hex"
+        log.append(
+            self._run(
+                [
+                    str(self._loader_path()),
+                    "--mcu=TEENSY40",
+                    "-w",
+                    "-v",
+                    str(firmware),
+                ],
+                timeout=60,
+            )
+        )
+        return {"target": target, "environment": env, "log": "\n".join(log)}
+
+    def _request_bootloader(self, port: str) -> None:
+        device = self._device_factory(port, self.baud)
+        try:
+            device.command(command_for_action("bootloader"))
+        except Exception:
+            # The board may drop USB before the response reaches the host.
+            pass
+        finally:
+            try:
+                device.close()
+            except Exception:
+                pass
+
+    def _run(self, command: Sequence[str], timeout: int) -> str:
+        result = self._runner(
+            list(command),
+            cwd=self.project_dir,
+            timeout=timeout,
+            text=True,
+            capture_output=True,
+        )
+        output = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0:
+            raise RuntimeError(output.strip() or f"command failed: {' '.join(command)}")
+        return output.strip()
+
+    @staticmethod
+    def _loader_path() -> Path:
+        import os
+
+        suffix = "teensy_loader_cli.exe" if os.name == "nt" else "teensy_loader_cli"
+        return Path.home() / ".platformio" / "packages" / "tool-teensy" / suffix
+
+
 class WebConfigApp:
     def __init__(
         self,
@@ -60,11 +142,13 @@ class WebConfigApp:
         baud: int = 115200,
         device_factory: DeviceFactory = FightingTeensySerial,
         port_lister: PortLister = default_port_lister,
+        flasher: Optional[FirmwareFlasher] = None,
     ) -> None:
         self.default_port = default_port
         self.baud = baud
         self._device_factory = device_factory
         self._port_lister = port_lister
+        self._flasher = flasher or FirmwareFlasher(baud=baud, device_factory=device_factory)
 
     def ports(self) -> JsonDict:
         return {"ok": True, "ports": list(self._port_lister())}
@@ -80,6 +164,17 @@ class WebConfigApp:
 
     def save(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, "SAVE")
+
+    def bootloader(self, payload: JsonDict) -> JsonDict:
+        return self._safe_command(payload, command_for_action("bootloader"))
+
+    def flash(self, payload: JsonDict) -> JsonDict:
+        try:
+            target = str(payload.get("target", ""))
+            port = str(payload.get("port") or self.default_port or "") or None
+            return {"ok": True, "flash": self._flasher.flash(target, port=port)}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
 
     def calibrate(self, payload: JsonDict) -> JsonDict:
         point = str(payload.get("point", "bottom")).lower()
@@ -117,6 +212,8 @@ class WebConfigApp:
             "/api/calibrate": self.calibrate,
             "/api/set": self.set_values,
             "/api/save": self.save,
+            "/api/bootloader": self.bootloader,
+            "/api/flash": self.flash,
         }
         handler = routes.get(path)
         if handler is None:

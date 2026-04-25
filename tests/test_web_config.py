@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -6,7 +7,7 @@ import urllib.request
 from pathlib import Path
 
 from tools.fighting_teensy_cli import parse_response
-from tools.fighting_teensy_web import WebConfigApp, create_server
+from tools.fighting_teensy_web import FirmwareFlasher, WebConfigApp, create_server
 
 
 class FakeDevice:
@@ -88,6 +89,81 @@ class WebConfigAppTests(unittest.TestCase):
         )
 
         self.assertEqual(app.ports()["ports"][0]["device"], "COM3")
+
+    def test_reboot_to_bootloader_sends_bootloader_command(self):
+        devices = []
+
+        def factory(port, baud):
+            device = FakeDevice(["OK bootloader"])
+            devices.append(device)
+            return device
+
+        app = WebConfigApp(default_port="COM3", device_factory=factory)
+
+        result = app.bootloader({})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(devices[0].commands, ["BOOTLOADER"])
+
+    def test_flash_config_uses_flasher(self):
+        calls = []
+
+        class FakeFlasher:
+            def flash(self, target, port=None):
+                calls.append((target, port))
+                return {"target": target, "port": port, "log": "done"}
+
+        app = WebConfigApp(default_port="COM3", flasher=FakeFlasher())
+
+        result = app.flash({"target": "config", "port": "COM7"})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["flash"]["target"], "config")
+        self.assertEqual(calls, [("config", "COM7")])
+
+
+class FirmwareFlasherTests(unittest.TestCase):
+    def test_firmware_flasher_builds_then_loads_config_hex(self):
+        commands = []
+
+        def runner(command, cwd, timeout, text, capture_output):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        flasher = FirmwareFlasher(project_dir=Path("C:/repo"), runner=runner)
+
+        result = flasher.flash("config")
+
+        self.assertEqual(result["target"], "config")
+        self.assertEqual(commands[0], ["pio", "run", "-e", "teensy40_config_serial"])
+        self.assertTrue(commands[1][0].endswith("teensy_loader_cli.exe"))
+        self.assertIn(".pio\\build\\teensy40_config_serial\\firmware.hex", commands[1][-1])
+
+    def test_firmware_flasher_reboots_serial_before_xinput_flash(self):
+        commands = []
+        devices = []
+
+        def runner(command, cwd, timeout, text, capture_output):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        def factory(port, baud):
+            device = FakeDevice(["OK bootloader"])
+            devices.append(device)
+            return device
+
+        flasher = FirmwareFlasher(
+            project_dir=Path("C:/repo"),
+            runner=runner,
+            device_factory=factory,
+        )
+
+        result = flasher.flash("xinput", port="COM3")
+
+        self.assertEqual(result["target"], "xinput")
+        self.assertEqual(devices[0].commands, ["BOOTLOADER"])
+        self.assertEqual(commands[0], ["pio", "run", "-e", "teensy40_xinput"])
+        self.assertIn(".pio\\build\\teensy40_xinput\\firmware.hex", commands[1][-1])
 
 
 class WebConfigHttpTests(unittest.TestCase):

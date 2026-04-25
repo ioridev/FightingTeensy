@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FightingTeensy Config</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>FightingTeensy Config</h1>
+        <p id="status">Disconnected</p>
+      </div>
+      <div class="connection">
+        <select id="portSelect" aria-label="Serial port"></select>
+        <button id="refreshPorts" type="button">Refresh</button>
+        <button id="ping" type="button">Ping</button>
+        <button id="load" type="button">Load</button>
+        <button id="save" type="button" class="primary">Save EEPROM</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel live-panel">
+        <div class="panel-title">
+          <h2>Live Hall Values</h2>
+          <div class="actions">
+            <button id="sample" type="button">Sample</button>
+            <button id="monitor" type="button">Monitor</button>
+            <button id="calRest" type="button">Cal Rest</button>
+          </div>
+        </div>
+        <div class="sample-grid" id="sampleGrid"></div>
+      </section>
+
+      <section class="direction-grid" id="directionGrid"></section>
+
+      <section class="panel log-panel">
+        <div class="panel-title">
+          <h2>Log</h2>
+          <button id="clearLog" type="button">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

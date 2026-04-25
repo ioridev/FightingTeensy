@@ -1,5 +1,8 @@
 # FightingTeensy
 
+> [!WARNING]
+> This is an experimental work-in-progress project. The firmware and PC tooling are not currently expected to work as a usable controller, and the repository exists for development and hardware bring-up only.
+
 FightingTeensy is a PlatformIO-based Teensy 4.0 fighting controller firmware for magnetic hall-effect directional switches, rapid-trigger style actuation, EEPROM-backed configuration, and an 8000 Hz target report loop.
 
 This repository is a new-generation rewrite rather than a patch on top of `Precision-Fighting-Board`.

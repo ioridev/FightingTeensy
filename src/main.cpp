@@ -10,11 +10,11 @@
 constexpr uint8_t PIN_BUTTON_A = 11;
 constexpr uint8_t PIN_BUTTON_B = 12;
 constexpr uint8_t PIN_BUTTON_X = 8;
-constexpr uint8_t PIN_BUTTON_Y = 7;
+constexpr uint8_t PIN_BUTTON_Y = 6;
 constexpr uint8_t PIN_BUTTON_LB = 10;
 constexpr uint8_t PIN_BUTTON_RB = 9;
 constexpr uint8_t PIN_BUTTON_BACK = 5;
-constexpr uint8_t PIN_BUTTON_START = 6;
+constexpr uint8_t PIN_BUTTON_START = 7;
 constexpr uint8_t PIN_BUTTON_L3 = 18;
 constexpr uint8_t PIN_BUTTON_R3 = 19;
 constexpr uint8_t PIN_BUTTON_LOGO = 4;

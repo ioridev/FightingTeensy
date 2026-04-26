@@ -5,6 +5,8 @@ const directions = [
   { key: "right", index: 3, label: "Right" },
 ];
 
+const HALL_TRAVEL_MM = 4.0;
+
 const buttons = [
   { key: "a", label: "A" },
   { key: "b", label: "B" },
@@ -53,6 +55,7 @@ let monitorTimer = null;
 let pinMonitorTimer = null;
 let buttonMonitorTimer = null;
 let latestPressedPins = [];
+let latestSampleFields = {};
 let sampleBusy = false;
 let pinScanBusy = false;
 let buttonSampleBusy = false;
@@ -130,15 +133,82 @@ function fieldsOf(data) {
   return data.response ? data.response.fields : {};
 }
 
+function numberFrom(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatMm(value) {
+  if (!Number.isFinite(value)) return "";
+  return (Math.round(value * 10) / 10).toFixed(1);
+}
+
+function clampMm(value) {
+  return Math.max(0, Math.min(HALL_TRAVEL_MM, numberFrom(value)));
+}
+
+function strokeCountsForCard(card) {
+  const rest = numberFrom(card.querySelector('[data-field="rest"]').value);
+  const bottom = numberFrom(card.querySelector('[data-field="bottom"]').value);
+  const stroke = Math.abs(rest - bottom);
+  return stroke > 0 ? stroke : 1;
+}
+
+function offsetToMm(offset, strokeCounts) {
+  return numberFrom(offset) * HALL_TRAVEL_MM / Math.max(strokeCounts, 1);
+}
+
+function mmToOffset(mm, strokeCounts) {
+  const clamped = Math.max(0, Math.min(HALL_TRAVEL_MM, numberFrom(mm)));
+  return Math.round(clamped * Math.max(strokeCounts, 1) / HALL_TRAVEL_MM);
+}
+
+function cardSettingsForDirection(direction) {
+  const card = cardFor(direction.key);
+  if (!card) {
+    return { strokeCounts: 1, pressOffset: 0, releaseOffset: 0 };
+  }
+  const strokeCounts = strokeCountsForCard(card);
+  return {
+    strokeCounts,
+    pressOffset: mmToOffset(card.querySelector('[data-field="press_mm"]').value, strokeCounts),
+    releaseOffset: mmToOffset(card.querySelector('[data-field="release_mm"]').value, strokeCounts),
+    rapidOffset: mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts),
+  };
+}
+
 function renderSamples(fields = {}) {
   elements.sampleGrid.innerHTML = directions.map((direction) => {
     const raw = fields[`key${direction.index}_raw`] ?? "-";
     const travel = fields[`key${direction.index}_travel`] ?? "-";
+    const settings = cardSettingsForDirection(direction);
+    const numericTravel = Number(travel);
+    const hasTravel = Number.isFinite(numericTravel);
+    const travelCounts = hasTravel ? numericTravel : 0;
+    const travelMm = hasTravel ? formatMm(offsetToMm(travelCounts, settings.strokeCounts)) : "-";
+    const fillPercent = Math.max(0, Math.min(100, travelCounts * 100 / settings.strokeCounts));
+    const activationPercent = Math.max(0, Math.min(100, settings.pressOffset * 100 / settings.strokeCounts));
+    const releasePercent = Math.max(0, Math.min(100, settings.releaseOffset * 100 / settings.strokeCounts));
+    const active = hasTravel && travelCounts >= settings.pressOffset;
     return `
-      <div class="sample-card">
-        <strong>${direction.label}</strong>
-        <div class="metric"><span>Raw</span><span>${raw}</span></div>
-        <div class="metric"><span>Travel</span><span>${travel}</span></div>
+      <div class="sample-card ${active ? "active" : ""}">
+        <div class="sample-card-head">
+          <strong>${direction.label}</strong>
+          <span>${travelMm} mm</span>
+        </div>
+        <div class="meter-row">
+          <div class="vertical-meter" aria-label="${direction.label} travel meter">
+            <div class="meter-fill" style="height:${fillPercent}%"></div>
+            <div class="meter-marker activation" style="bottom:${activationPercent}%"></div>
+            <div class="meter-marker release" style="bottom:${releasePercent}%"></div>
+          </div>
+          <div class="meter-metrics">
+            <div class="metric"><span>Raw</span><span>${raw}</span></div>
+            <div class="metric"><span>Travel</span><span>${travel}</span></div>
+            <div class="metric"><span>Act</span><span>${formatMm(offsetToMm(settings.pressOffset, settings.strokeCounts))} mm</span></div>
+            <div class="metric"><span>Rel</span><span>${formatMm(offsetToMm(settings.releaseOffset, settings.strokeCounts))} mm</span></div>
+          </div>
+        </div>
       </div>
     `;
   }).join("");
@@ -202,16 +272,16 @@ function renderDirectionCards() {
           <input type="number" min="0" max="1023" step="1" data-field="bottom">
         </label>
         <label class="field">
-          Activation Offset
-          <input type="number" min="0" max="1023" step="1" data-field="press">
+          Activation (mm)
+          <input type="number" min="0" max="4" step="0.1" data-field="press_mm">
         </label>
         <label class="field">
-          Rapid Release Offset
-          <input type="number" min="0" max="1023" step="1" data-field="release">
+          Rapid Release (mm)
+          <input type="number" min="0" max="4" step="0.1" data-field="release_mm">
         </label>
         <label class="field">
-          Rapid Noise Filter
-          <input type="number" min="0" max="1023" step="1" data-field="rapid">
+          Rapid Noise Filter (mm)
+          <input type="number" min="0" max="4" step="0.1" data-field="rapid_mm">
         </label>
         <label class="check-row">
           <input type="checkbox" data-field="active_low">
@@ -238,10 +308,17 @@ function applySettings(fields) {
   for (const direction of directions) {
     const card = cardFor(direction.key);
     if (!card) continue;
-    for (const field of ["press", "release", "rapid", "rest", "bottom"]) {
+    for (const field of ["rest", "bottom"]) {
       const input = card.querySelector(`[data-field="${field}"]`);
       input.value = fields[`key${direction.index}_${field}`] ?? "";
     }
+    const strokeCounts = strokeCountsForCard(card);
+    card.querySelector('[data-field="press_mm"]').value =
+      formatMm(clampMm(offsetToMm(fields[`key${direction.index}_press`], strokeCounts)));
+    card.querySelector('[data-field="release_mm"]').value =
+      formatMm(clampMm(offsetToMm(fields[`key${direction.index}_release`], strokeCounts)));
+    card.querySelector('[data-field="rapid_mm"]').value =
+      formatMm(clampMm(offsetToMm(fields[`key${direction.index}_rapid`], strokeCounts)));
     const activeLow = card.querySelector('[data-field="active_low"]');
     activeLow.checked = fields[`key${direction.index}_active_low`] === "1";
   }
@@ -256,12 +333,16 @@ function applySettings(fields) {
 function payloadForCard(key) {
   const card = cardFor(key);
   const payload = { key };
-  for (const field of ["press", "release", "rapid", "rest", "bottom"]) {
+  const strokeCounts = strokeCountsForCard(card);
+  for (const field of ["rest", "bottom"]) {
     const value = card.querySelector(`[data-field="${field}"]`).value;
     if (value !== "") {
       payload[field] = Number(value);
     }
   }
+  payload.press = mmToOffset(card.querySelector('[data-field="press_mm"]').value, strokeCounts);
+  payload.release = mmToOffset(card.querySelector('[data-field="release_mm"]').value, strokeCounts);
+  payload.rapid = mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts);
   payload.active_low = card.querySelector('[data-field="active_low"]').checked ? 1 : 0;
   return payload;
 }
@@ -361,6 +442,7 @@ async function ping() {
 async function loadSettings() {
   const data = await api("/api/settings", {});
   applySettings(fieldsOf(data));
+  renderSamples(latestSampleFields);
   log(data.response.text);
 }
 
@@ -369,7 +451,8 @@ async function sample() {
   sampleBusy = true;
   try {
   const data = await api("/api/sample", {});
-  renderSamples(fieldsOf(data));
+  latestSampleFields = fieldsOf(data);
+  renderSamples(latestSampleFields);
   return data;
   } finally {
     sampleBusy = false;
@@ -526,6 +609,11 @@ function bindEvents() {
     if (action === "calBottom") calBottom(key).catch(handleError);
     if (action === "apply") applyCard(key).catch(handleError);
     if (action === "sampleOne") sample().catch(handleError);
+  });
+  elements.directionGrid.addEventListener("input", (event) => {
+    if (event.target.closest("[data-field]")) {
+      renderSamples(latestSampleFields);
+    }
   });
 }
 

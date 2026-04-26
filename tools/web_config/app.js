@@ -194,11 +194,11 @@ function renderDirectionCards() {
       </div>
       <div class="direction-body">
         <label class="field">
-          Idle Voltage
+          Idle ADC
           <input type="number" min="0" max="1023" step="1" data-field="rest">
         </label>
         <label class="field">
-          Pressed Voltage
+          Pressed ADC
           <input type="number" min="0" max="1023" step="1" data-field="bottom">
         </label>
         <label class="field">
@@ -206,11 +206,11 @@ function renderDirectionCards() {
           <input type="number" min="0" max="1023" step="1" data-field="press">
         </label>
         <label class="field">
-          Rapid Trigger Threshold
+          Rapid Release Offset
           <input type="number" min="0" max="1023" step="1" data-field="release">
         </label>
         <label class="field">
-          Rapid Trigger Noise Filter
+          Rapid Noise Filter
           <input type="number" min="0" max="1023" step="1" data-field="rapid">
         </label>
         <label class="check-row">

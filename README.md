@@ -128,7 +128,7 @@ python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point bottom
 python tools\fighting_teensy_cli.py --port COM7 save
 ```
 
-For hall directions, `press` is the activation offset from idle, `release` is the rapid-trigger threshold, and `rapid` is the noise filter/movement amount. Set `rapid` to `0` to disable rapid-trigger behavior and use static press/release thresholds.
+For hall directions, `rest` and `bottom` are raw ADC readings. `press` is the activation offset from idle, `release` is the rapid release offset, and `rapid` is the rapid noise filter/movement amount. Set `rapid` to `0` to disable rapid-trigger behavior and use static press/release thresholds.
 
 Use `monitor` to watch live hall readings:
 

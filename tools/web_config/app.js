@@ -212,7 +212,8 @@ function renderSamples(fields = {}) {
             <div class="metric"><span>Raw</span><span>${raw}</span></div>
             <div class="metric"><span>Travel</span><span>${travel}</span></div>
             <div class="metric"><span>Act</span><span>${formatMm(offsetToMm(settings.pressOffset, settings.strokeCounts))} mm</span></div>
-            <div class="metric"><span>Rel</span><span>${formatMm(offsetToMm(settings.releaseOffset, settings.strokeCounts))} mm</span></div>
+            <div class="metric"><span>RT</span><span>${formatMm(offsetToMm(settings.rapidOffset, settings.strokeCounts))} mm</span></div>
+            <div class="metric"><span>Reset</span><span>${formatMm(offsetToMm(settings.releaseOffset, settings.strokeCounts))} mm</span></div>
           </div>
         </div>
       </div>
@@ -282,11 +283,11 @@ function renderDirectionCards() {
           <input type="number" min="0" max="4" step="0.1" data-field="press_mm">
         </label>
         <label class="field">
-          Rapid Release (mm)
+          Static Reset Point (mm)
           <input type="number" min="0" max="4" step="0.1" data-field="release_mm">
         </label>
         <label class="field">
-          Rapid Noise Filter (mm)
+          Rapid Trigger Sensitivity (mm)
           <input type="number" min="0" max="4" step="0.1" data-field="rapid_mm">
         </label>
         <label class="check-row">

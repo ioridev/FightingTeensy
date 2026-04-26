@@ -6,7 +6,8 @@ void MagneticKey::begin(uint8_t analogPin, const KeyCalibration *calibration) {
   pinMode(pin_, INPUT);
   raw_ = analogRead(pin_);
   travel_ = currentTravel(raw_);
-  lastRapidTravel_ = travel_;
+  rapidAnchorTravel_ = travel_;
+  requireRapidRepress_ = false;
   pressed_ = false;
 }
 
@@ -16,18 +17,37 @@ bool MagneticKey::update() {
   const int16_t rapidOffset = static_cast<int16_t>(calibration_->rapidTriggerOffset);
 
   if (rapidOffset > 0) {
-    const bool pressing = travel_ > lastRapidTravel_ + rapidOffset;
-    const bool releasing = lastRapidTravel_ > travel_ + rapidOffset;
+    const int16_t pressOffset = static_cast<int16_t>(calibration_->pressOffset);
+    const int16_t releaseOffset = static_cast<int16_t>(calibration_->releaseOffset);
 
-    if (pressing || releasing) {
-      lastRapidTravel_ = travel_;
-    }
+    if (pressed_) {
+      if (travel_ > rapidAnchorTravel_) {
+        rapidAnchorTravel_ = travel_;
+      }
 
-    if (!pressed_ && pressing && travel_ >= static_cast<int16_t>(calibration_->pressOffset)) {
-      pressed_ = true;
-    } else if (pressed_ && releasing &&
-               travel_ <= static_cast<int16_t>(calibration_->releaseOffset)) {
-      pressed_ = false;
+      if (travel_ <= releaseOffset || rapidAnchorTravel_ - travel_ >= rapidOffset) {
+        pressed_ = false;
+        rapidAnchorTravel_ = travel_;
+        requireRapidRepress_ = travel_ > releaseOffset;
+      }
+    } else {
+      if (travel_ <= releaseOffset) {
+        requireRapidRepress_ = false;
+      }
+
+      if (travel_ < rapidAnchorTravel_) {
+        rapidAnchorTravel_ = travel_;
+      }
+
+      if (!requireRapidRepress_) {
+        if (travel_ >= pressOffset) {
+          pressed_ = true;
+          rapidAnchorTravel_ = travel_;
+        }
+      } else if (travel_ >= pressOffset && travel_ - rapidAnchorTravel_ >= rapidOffset) {
+        pressed_ = true;
+        rapidAnchorTravel_ = travel_;
+      }
     }
 
     return pressed_;

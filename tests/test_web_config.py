@@ -148,10 +148,23 @@ class WebConfigAppTests(unittest.TestCase):
             port_lister=lambda: [
                 {"device": "COM3", "description": "USB Serial Device"},
                 {"device": "COM9", "description": "Debug Port"},
-            ]
+            ],
+            bootloader_detector=lambda: False,
         )
 
         self.assertEqual(app.ports()["ports"][0]["device"], "COM3")
+
+    def test_reports_halfkay_bootloader_presence(self):
+        app = WebConfigApp(
+            port_lister=lambda: [],
+            bootloader_detector=lambda: True,
+        )
+
+        result = app.ports()
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["bootloader"]["present"], True)
+        self.assertEqual(result["bootloader"]["vid_pid"], "16C0:0478")
 
     def test_default_port_lister_prefers_teensy_serial(self):
         # This is an integration check against the current host USB state. If a
@@ -244,7 +257,10 @@ class FirmwareFlasherTests(unittest.TestCase):
 
 class WebConfigHttpTests(unittest.TestCase):
     def test_http_api_returns_json(self):
-        app = WebConfigApp(port_lister=lambda: [{"device": "COM3", "description": "USB"}])
+        app = WebConfigApp(
+            port_lister=lambda: [{"device": "COM3", "description": "USB"}],
+            bootloader_detector=lambda: False,
+        )
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "index.html").write_text("<!doctype html><title>test</title>", encoding="utf-8")
             server = create_server("127.0.0.1", 0, app, static_dir=Path(tmp))

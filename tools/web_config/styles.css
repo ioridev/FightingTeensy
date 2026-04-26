@@ -201,6 +201,10 @@ main {
   margin: 18px auto 30px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .panel,
 .direction-card,
 .button-pin-card,
@@ -222,6 +226,33 @@ main {
   width: 54px;
   height: 3px;
   background: var(--accent);
+}
+
+.bootloader-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-color: var(--accent);
+  background:
+    linear-gradient(90deg, rgba(255, 47, 85, 0.16), transparent 34%),
+    #000;
+}
+
+.bootloader-panel h2 {
+  color: var(--warn);
+}
+
+.bootloader-panel p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.bootloader-panel button {
+  min-width: 190px;
 }
 
 .panel-title {
@@ -706,6 +737,11 @@ select:focus {
 
   .workflow-panel {
     grid-template-columns: 1fr;
+  }
+
+  .bootloader-panel {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .workflow-tools {

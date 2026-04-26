@@ -49,6 +49,7 @@ const elements = {
   pinScan: document.querySelector("#pinScan"),
   arcadeTester: document.querySelector("#arcadeTester"),
   monitorState: document.querySelector("#monitorState"),
+  bootloaderPanel: document.querySelector("#bootloaderPanel"),
 };
 
 let monitorTimer = null;
@@ -111,6 +112,11 @@ function stopAllMonitors() {
   if (pinButton) pinButton.textContent = "Monitor Pins";
   if (buttonTester) buttonTester.textContent = "Monitor Buttons";
   updateMonitorState();
+}
+
+function setBootloaderPanel(visible) {
+  if (!elements.bootloaderPanel) return;
+  elements.bootloaderPanel.hidden = !visible;
 }
 
 async function api(path, payload = null) {
@@ -409,6 +415,8 @@ function renderPinScan(fields = {}) {
 async function refreshPorts() {
   try {
     const data = await api("/api/ports");
+    const bootloaderPresent = Boolean(data.bootloader && data.bootloader.present);
+    setBootloaderPanel(bootloaderPresent);
     elements.portSelect.innerHTML = data.ports.map((port) => {
       const label = `${port.device} - ${port.description || ""}`.trim();
       return `<option value="${port.device}">${label}</option>`;
@@ -420,8 +428,12 @@ async function refreshPorts() {
       const teensyPort = data.ports.find((port) => String(port.hwid || "").toUpperCase().includes("VID:PID=16C0:0483"));
       if (teensyPort) {
         elements.portSelect.value = teensyPort.device;
+        setBootloaderPanel(false);
         setStatus(`Ready: ${selectedPort()}`);
         loadSettings().catch(handleError);
+      } else if (bootloaderPresent) {
+        setStatus("HalfKay detected: flash config firmware", false);
+        log("Teensy HalfKay detected. Click Enter Config Mode to flash config firmware.");
       } else {
         setStatus("Teensy serial not found", false);
         log("Teensy serial port not found. Use config firmware mode, then Refresh Ports.");
@@ -580,6 +592,7 @@ function bindEvents() {
   document.querySelector("#load").addEventListener("click", () => loadSettings().catch(handleError));
   document.querySelector("#save").addEventListener("click", () => save().catch(handleError));
   document.querySelector("#flashConfig").addEventListener("click", () => flashFirmware("config").catch(handleError));
+  document.querySelector("#enterConfigMode").addEventListener("click", () => flashFirmware("config").catch(handleError));
   document.querySelector("#returnXinput").addEventListener("click", () => flashFirmware("xinput").catch(handleError));
   document.querySelector("#sample").addEventListener("click", () => sample().catch(handleError));
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());

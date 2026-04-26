@@ -30,6 +30,7 @@ except ImportError:
 JsonDict = Dict[str, Any]
 DeviceFactory = Callable[[str, int], Any]
 PortLister = Callable[[], Iterable[JsonDict]]
+BootloaderDetector = Callable[[], bool]
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
@@ -62,6 +63,34 @@ def default_port_lister() -> Iterable[JsonDict]:
             str(port.get("device", "")),
         ),
     )
+
+
+def default_bootloader_detector() -> bool:
+    import os
+
+    if os.name != "nt":
+        return False
+
+    command = [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        (
+            "Get-CimInstance Win32_PnPEntity | "
+            "Where-Object { $_.DeviceID -match 'VID_16C0&PID_0478' } | "
+            "Select-Object -First 1 -ExpandProperty DeviceID"
+        ),
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            timeout=4,
+            text=True,
+            capture_output=True,
+        )
+    except Exception:
+        return False
+    return result.returncode == 0 and "VID_16C0&PID_0478" in (result.stdout or "").upper()
 
 
 class FirmwareFlasher:
@@ -150,17 +179,27 @@ class WebConfigApp:
         baud: int = 115200,
         device_factory: DeviceFactory = FightingTeensySerial,
         port_lister: PortLister = default_port_lister,
+        bootloader_detector: BootloaderDetector = default_bootloader_detector,
         flasher: Optional[FirmwareFlasher] = None,
     ) -> None:
         self.default_port = default_port
         self.baud = baud
         self._device_factory = device_factory
         self._port_lister = port_lister
+        self._bootloader_detector = bootloader_detector
         self._flasher = flasher or FirmwareFlasher(baud=baud, device_factory=device_factory)
         self._serial_lock = threading.Lock()
 
     def ports(self) -> JsonDict:
-        return {"ok": True, "ports": list(self._port_lister())}
+        return {
+            "ok": True,
+            "ports": list(self._port_lister()),
+            "bootloader": {
+                "present": self._bootloader_detector(),
+                "vid_pid": "16C0:0478",
+                "name": "Teensy HalfKay",
+            },
+        }
 
     def ping(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, "PING")

@@ -22,6 +22,14 @@
     </header>
 
     <main>
+      <section class="panel bootloader-panel" id="bootloaderPanel" hidden>
+        <div>
+          <h2>HalfKay detected</h2>
+          <p>Teensy is waiting for firmware. Flash config firmware to open this tool.</p>
+        </div>
+        <button id="enterConfigMode" type="button" class="primary">Enter Config Mode</button>
+      </section>
+
       <section class="panel workflow-panel">
         <div class="workflow-actions" aria-label="Main workflow">
           <button id="applyButtonPins" type="button">1 Apply Mapping</button>

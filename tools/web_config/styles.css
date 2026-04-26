@@ -509,6 +509,12 @@ main {
   color: #dceaff;
 }
 
+.rt-status.warning span {
+  border-color: rgba(255, 178, 61, 0.54);
+  background: rgba(255, 178, 61, 0.08);
+  color: var(--warn);
+}
+
 .button-panel,
 .tester-panel,
 .log-panel {

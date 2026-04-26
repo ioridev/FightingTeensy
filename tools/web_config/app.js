@@ -72,6 +72,7 @@ let sampleBusy = false;
 let pinScanBusy = false;
 let buttonSampleBusy = false;
 let snackbarTimer = null;
+let pressedStateWarningShown = false;
 
 function selectedPort() {
   return elements.portSelect.value;
@@ -267,13 +268,15 @@ function renderSamples(fields = {}) {
     const fillPercent = Math.max(0, Math.min(100, travelCounts * 100 / settings.strokeCounts));
     const activationPercent = Math.max(0, Math.min(100, settings.pressOffset * 100 / settings.strokeCounts));
     const releasePercent = Math.max(0, Math.min(100, settings.releaseOffset * 100 / settings.strokeCounts));
-    const active = pressedField === undefined
-      ? hasTravel && travelCounts >= settings.pressOffset
-      : pressedField === "1";
+    const hasPressedState = pressedField !== undefined;
+    const active = hasPressedState ? pressedField === "1" : hasTravel && travelCounts >= settings.pressOffset;
     const rt = rapidStateFor(direction, travelCounts, active, settings);
     const returnMm = formatMm(offsetToMm(rt.returnTravel, settings.strokeCounts));
-    const eventFresh = Date.now() - rt.eventAt < 900;
+    const eventFresh = hasPressedState && Date.now() - rt.eventAt < 900;
     const rtClass = rt.event === "RT OFF" && eventFresh ? "rt-release" : "";
+    const rtStatus = hasPressedState
+      ? `<span>${active ? "ON" : "OFF"}</span><span>${rt.event}</span><span>RT OFF ${rt.rtOffCount}</span>`
+      : "<span>FW OLD</span><span>NO RT DATA</span><span>FLASH CONFIG</span>";
     return `
       <div class="sample-card ${active ? "active" : ""} ${rtClass}">
         <div class="sample-card-head">
@@ -295,10 +298,8 @@ function renderSamples(fields = {}) {
             <div class="metric"><span>Reset</span><span>${formatMm(offsetToMm(settings.releaseOffset, settings.strokeCounts))} mm</span></div>
           </div>
         </div>
-        <div class="rt-status ${rt.event === "RT OFF" && eventFresh ? "hot" : ""}">
-          <span>${active ? "ON" : "OFF"}</span>
-          <span>${rt.event}</span>
-          <span>RT OFF ${rt.rtOffCount}</span>
+        <div class="rt-status ${rt.event === "RT OFF" && eventFresh ? "hot" : ""} ${hasPressedState ? "" : "warning"}">
+          ${rtStatus}
         </div>
       </div>
     `;
@@ -551,6 +552,15 @@ async function sample() {
   try {
   const data = await api("/api/sample", {});
   latestSampleFields = fieldsOf(data);
+  const hasSamples = Object.keys(latestSampleFields).length > 0;
+  const hasPressedState = directions.every((direction) => (
+    latestSampleFields[`key${direction.index}_pressed`] !== undefined
+  ));
+  if (hasSamples && !hasPressedState && !pressedStateWarningShown) {
+    pressedStateWarningShown = true;
+    notify("Config firmware is old. Flash Config Firmware to monitor RT OFF.", "error");
+    log("Current config firmware does not report key pressed state; RT OFF monitor is unavailable until reflashed.");
+  }
   renderSamples(latestSampleFields);
   return data;
   } finally {

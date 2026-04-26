@@ -39,6 +39,16 @@ const testerButtons = [
   { key: "r3", label: "R3", row: 3, col: 5 },
 ];
 
+const rapidStates = directions.map(() => ({
+  pressed: false,
+  peak: 0,
+  trough: 0,
+  returnTravel: 0,
+  event: "Idle",
+  eventAt: 0,
+  rtOffCount: 0,
+}));
+
 const elements = {
   portSelect: document.querySelector("#portSelect"),
   status: document.querySelector("#status"),
@@ -202,10 +212,53 @@ function cardSettingsForDirection(direction) {
   };
 }
 
+function rapidStateFor(direction, travelCounts, pressed, settings) {
+  const state = rapidStates[direction.index];
+  const now = Date.now();
+
+  if (pressed) {
+    if (!state.pressed) {
+      const repress = travelCounts - state.trough >= settings.rapidOffset;
+      state.event = repress && state.trough > settings.releaseOffset ? "RT ON" : "ON";
+      state.eventAt = now;
+      state.peak = travelCounts;
+    } else if (travelCounts > state.peak) {
+      state.peak = travelCounts;
+    }
+    state.trough = travelCounts;
+    state.returnTravel = Math.max(0, state.peak - travelCounts);
+  } else {
+    if (state.pressed) {
+      const returnTravel = Math.max(0, state.peak - travelCounts);
+      const rtReleased = returnTravel >= settings.rapidOffset && travelCounts > settings.releaseOffset;
+      state.event = rtReleased ? "RT OFF" : "Reset OFF";
+      state.eventAt = now;
+      if (rtReleased) {
+        state.rtOffCount += 1;
+      }
+      state.returnTravel = returnTravel;
+      state.trough = travelCounts;
+    } else if (travelCounts < state.trough || state.event === "Idle") {
+      state.trough = travelCounts;
+    }
+    if (travelCounts <= settings.releaseOffset) {
+      state.peak = travelCounts;
+      state.trough = travelCounts;
+      if (now - state.eventAt > 600) {
+        state.event = "Idle";
+      }
+    }
+  }
+
+  state.pressed = pressed;
+  return state;
+}
+
 function renderSamples(fields = {}) {
   elements.sampleGrid.innerHTML = directions.map((direction) => {
     const raw = fields[`key${direction.index}_raw`] ?? "-";
     const travel = fields[`key${direction.index}_travel`] ?? "-";
+    const pressedField = fields[`key${direction.index}_pressed`];
     const settings = cardSettingsForDirection(direction);
     const numericTravel = Number(travel);
     const hasTravel = Number.isFinite(numericTravel);
@@ -214,9 +267,15 @@ function renderSamples(fields = {}) {
     const fillPercent = Math.max(0, Math.min(100, travelCounts * 100 / settings.strokeCounts));
     const activationPercent = Math.max(0, Math.min(100, settings.pressOffset * 100 / settings.strokeCounts));
     const releasePercent = Math.max(0, Math.min(100, settings.releaseOffset * 100 / settings.strokeCounts));
-    const active = hasTravel && travelCounts >= settings.pressOffset;
+    const active = pressedField === undefined
+      ? hasTravel && travelCounts >= settings.pressOffset
+      : pressedField === "1";
+    const rt = rapidStateFor(direction, travelCounts, active, settings);
+    const returnMm = formatMm(offsetToMm(rt.returnTravel, settings.strokeCounts));
+    const eventFresh = Date.now() - rt.eventAt < 900;
+    const rtClass = rt.event === "RT OFF" && eventFresh ? "rt-release" : "";
     return `
-      <div class="sample-card ${active ? "active" : ""}">
+      <div class="sample-card ${active ? "active" : ""} ${rtClass}">
         <div class="sample-card-head">
           <strong>${direction.label}</strong>
           <span>${travelMm} mm</span>
@@ -232,8 +291,14 @@ function renderSamples(fields = {}) {
             <div class="metric"><span>Travel</span><span>${travel}</span></div>
             <div class="metric"><span>Act</span><span>${formatMm(offsetToMm(settings.pressOffset, settings.strokeCounts))} mm</span></div>
             <div class="metric"><span>RT</span><span>${formatMm(offsetToMm(settings.rapidOffset, settings.strokeCounts))} mm</span></div>
+            <div class="metric"><span>Return</span><span>${returnMm} mm</span></div>
             <div class="metric"><span>Reset</span><span>${formatMm(offsetToMm(settings.releaseOffset, settings.strokeCounts))} mm</span></div>
           </div>
+        </div>
+        <div class="rt-status ${rt.event === "RT OFF" && eventFresh ? "hot" : ""}">
+          <span>${active ? "ON" : "OFF"}</span>
+          <span>${rt.event}</span>
+          <span>RT OFF ${rt.rtOffCount}</span>
         </div>
       </div>
     `;

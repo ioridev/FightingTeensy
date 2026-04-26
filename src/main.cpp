@@ -226,6 +226,10 @@ void printSample() {
     Serial.print(i);
     Serial.print("_travel=");
     Serial.print(dpadKeys[i].travel());
+    Serial.print(" key");
+    Serial.print(i);
+    Serial.print("_pressed=");
+    Serial.print(dpadKeys[i].pressed() ? 1 : 0);
   }
   Serial.println();
 }

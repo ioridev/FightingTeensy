@@ -381,6 +381,11 @@ main {
   box-shadow: 0 0 0 1px rgba(56, 228, 167, 0.22), var(--shadow-green);
 }
 
+.sample-card.rt-release {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px rgba(109, 167, 255, 0.28), 0 0 24px rgba(109, 167, 255, 0.18);
+}
+
 .sample-card strong {
   display: block;
 }
@@ -472,6 +477,36 @@ main {
   display: grid;
   align-content: start;
   gap: 6px;
+}
+
+.rt-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rt-status span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 6px;
+  border: 1px solid rgba(56, 228, 167, 0.24);
+  background: rgba(56, 228, 167, 0.045);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-status.hot span {
+  border-color: var(--blue);
+  background: rgba(109, 167, 255, 0.1);
+  color: #dceaff;
 }
 
 .button-panel,

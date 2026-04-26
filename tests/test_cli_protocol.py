@@ -16,6 +16,14 @@ class ProtocolParsingTests(unittest.TestCase):
         self.assertEqual(response.fields["key0_press"], "80")
         self.assertEqual(response.fields["key0_rapid"], "28")
 
+    def test_parse_sample_response_with_pressed_state(self):
+        response = parse_response("SAMPLE key0_raw=510 key0_travel=42 key0_pressed=1")
+
+        self.assertEqual(response.kind, "SAMPLE")
+        self.assertEqual(response.fields["key0_raw"], "510")
+        self.assertEqual(response.fields["key0_travel"], "42")
+        self.assertEqual(response.fields["key0_pressed"], "1")
+
     def test_parse_ok_response_without_fields(self):
         response = parse_response("OK saved")
 

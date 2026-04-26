@@ -200,6 +200,11 @@ main {
   background: #fbfcfe;
 }
 
+.button-pin-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .metric {
   display: flex;
   justify-content: space-between;
@@ -319,6 +324,11 @@ label.field input {
 
   .button-pin-card {
     grid-template-columns: 1fr;
+  }
+
+  .button-pin-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .panel-title,

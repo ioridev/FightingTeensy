@@ -168,6 +168,13 @@ def command_for_action(action: str, **options: object) -> str:
                 raise ValueError("button pin setting requires button and pin")
             tokens.append(f"btn_{_button_name(str(button))}_pin={pin}")
 
+        button_pins = options.get("button_pins")
+        if button_pins is not None:
+            if not isinstance(button_pins, dict):
+                raise ValueError("button_pins must be a dict")
+            for button_name, button_pin in button_pins.items():
+                tokens.append(f"btn_{_button_name(str(button_name))}_pin={button_pin}")
+
         key = options.get("key")
         if key is not None:
             index = _key_index(str(key))

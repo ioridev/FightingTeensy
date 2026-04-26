@@ -195,6 +195,7 @@ class WebConfigApp:
             "key": payload.get("key"),
             "button": payload.get("button"),
             "pin": self._optional_int(payload, "pin"),
+            "button_pins": self._optional_int_map(payload, "button_pins"),
             "rest": self._optional_int(payload, "rest"),
             "bottom": self._optional_int(payload, "bottom"),
             "press": self._optional_int(payload, "press"),
@@ -250,6 +251,15 @@ class WebConfigApp:
         if value is None or value == "":
             return None
         return int(value)
+
+    @staticmethod
+    def _optional_int_map(payload: JsonDict, name: str) -> Optional[Dict[str, int]]:
+        value = payload.get(name)
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise ValueError(f"{name} must be an object")
+        return {str(key): int(item) for key, item in value.items()}
 
 
 def create_server(

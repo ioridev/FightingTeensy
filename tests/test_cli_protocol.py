@@ -56,6 +56,18 @@ class ProtocolParsingTests(unittest.TestCase):
 
         self.assertEqual(command, "SET btn_start_pin=6")
 
+    def test_set_command_builds_multiple_button_pins(self):
+        command = command_for_action(
+            "set",
+            button_pins={
+                "a": 11,
+                "b": 12,
+                "start": 6,
+            },
+        )
+
+        self.assertEqual(command, "SET btn_a_pin=11 btn_b_pin=12 btn_start_pin=6")
+
     def test_set_command_rejects_unknown_button(self):
         with self.assertRaises(ValueError):
             command_for_action("set", button="turbo", pin=22)

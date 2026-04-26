@@ -84,6 +84,21 @@ class WebConfigAppTests(unittest.TestCase):
         self.assertEqual(result["ok"], True)
         self.assertEqual(devices[0].commands, ["SET btn_start_pin=6"])
 
+    def test_set_applies_digital_button_pin_map(self):
+        devices = []
+
+        def factory(port, baud):
+            device = FakeDevice(["OK set"])
+            devices.append(device)
+            return device
+
+        app = WebConfigApp(default_port="COM7", device_factory=factory)
+
+        result = app.set_values({"button_pins": {"a": 11, "b": 12, "start": 6}})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(devices[0].commands, ["SET btn_a_pin=11 btn_b_pin=12 btn_start_pin=6"])
+
     def test_reads_pressed_pin_scan(self):
         devices = []
 

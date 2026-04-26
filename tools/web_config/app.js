@@ -33,6 +33,7 @@ const elements = {
 
 let monitorTimer = null;
 let pinMonitorTimer = null;
+let latestPressedPins = [];
 
 function selectedPort() {
   return elements.portSelect.value;
@@ -89,7 +90,10 @@ function renderButtonPins() {
         ${button.label}
         <input type="number" min="0" max="33" step="1" data-field="pin">
       </label>
-      <button type="button" data-action="applyButtonPin" data-button="${button.key}">Apply</button>
+      <div class="button-pin-actions">
+        <button type="button" data-action="usePressedPin" data-button="${button.key}">Use Pressed</button>
+        <button type="button" data-action="applyButtonPin" data-button="${button.key}">Apply</button>
+      </div>
     </article>
   `).join("");
 }
@@ -181,6 +185,24 @@ function payloadForButtonPin(key) {
   return { button: key, pin: Number(value) };
 }
 
+function payloadForButtonPins() {
+  const buttonPins = {};
+  for (const button of buttons) {
+    const card = buttonCardFor(button.key);
+    const value = card.querySelector('[data-field="pin"]').value;
+    buttonPins[button.key] = Number(value);
+  }
+  return { button_pins: buttonPins };
+}
+
+function usePressedPinForButton(key) {
+  if (latestPressedPins.length !== 1) {
+    throw new Error("press exactly one button, then scan pins");
+  }
+  const card = buttonCardFor(key);
+  card.querySelector('[data-field="pin"]').value = latestPressedPins[0];
+}
+
 function labelForPin(pin) {
   const matched = buttons.find((button) => {
     const card = buttonCardFor(button.key);
@@ -194,6 +216,7 @@ function renderPinScan(fields = {}) {
     .filter(([key, value]) => key.startsWith("pin") && value === "1")
     .map(([key]) => Number(key.substring(3)))
     .sort((a, b) => a - b);
+  latestPressedPins = pressed;
 
   if (pressed.length === 0) {
     elements.pinScan.innerHTML = '<span class="muted">No pressed pins</span>';
@@ -218,6 +241,7 @@ async function refreshPorts() {
       setStatus("No serial ports", false);
     } else {
       setStatus(`Ready: ${selectedPort()}`);
+      loadSettings().catch(handleError);
     }
   } catch (error) {
     setStatus(error.message, false);
@@ -286,6 +310,11 @@ async function applyButtonPin(key) {
   log(`${key} pin: ${data.response.text}`);
 }
 
+async function applyButtonPins() {
+  const data = await api("/api/set", payloadForButtonPins());
+  log(`button pins: ${data.response.text}`);
+}
+
 function handleError(error) {
   setStatus(error.message, false);
   log(`ERROR ${error.message}`);
@@ -326,6 +355,7 @@ function bindEvents() {
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());
   document.querySelector("#scanPins").addEventListener("click", () => scanPins().catch(handleError));
   document.querySelector("#monitorPins").addEventListener("click", () => togglePinMonitor());
+  document.querySelector("#applyButtonPins").addEventListener("click", () => applyButtonPins().catch(handleError));
   document.querySelector("#calRest").addEventListener("click", () => calRest().catch(handleError));
   document.querySelector("#clearLog").addEventListener("click", () => { elements.log.textContent = ""; });
   elements.buttonPinGrid.addEventListener("click", (event) => {
@@ -333,6 +363,13 @@ function bindEvents() {
     if (!button) return;
     if (button.dataset.action === "applyButtonPin") {
       applyButtonPin(button.dataset.button).catch(handleError);
+    }
+    if (button.dataset.action === "usePressedPin") {
+      try {
+        usePressedPinForButton(button.dataset.button);
+      } catch (error) {
+        handleError(error);
+      }
     }
   });
   elements.directionGrid.addEventListener("click", (event) => {

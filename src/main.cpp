@@ -104,6 +104,24 @@ bool parseUint8(const String &value, uint8_t &out) {
   return true;
 }
 
+bool isValidDigitalButtonPin(uint8_t pin) {
+  return pin <= 33 && !(pin >= 14 && pin <= 17);
+}
+
+bool hasValidDigitalButtonPinMap(const ControllerSettings &candidate) {
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    if (!isValidDigitalButtonPin(candidate.buttonPins[i])) {
+      return false;
+    }
+    for (uint8_t j = static_cast<uint8_t>(i + 1); j < FT_BUTTON_COUNT; ++j) {
+      if (candidate.buttonPins[i] == candidate.buttonPins[j]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 void printSettings() {
   Serial.print("SETTINGS");
   Serial.print(" socd=");
@@ -217,7 +235,7 @@ void calibrateRest(uint16_t samples) {
   Serial.println("OK rest_calibrated");
 }
 
-bool applySettingToken(const String &token) {
+bool applySettingToken(ControllerSettings &candidate, const String &token) {
   const int tokenLength = static_cast<int>(token.length());
   const int equals = token.indexOf('=');
   if (equals <= 0 || equals >= tokenLength - 1) {
@@ -232,7 +250,7 @@ bool applySettingToken(const String &token) {
     if (!parseUint8(value, mode) || mode > SOCD_UP_PRIORITY) {
       return false;
     }
-    settings.socdMode = mode;
+    candidate.socdMode = mode;
     return true;
   }
 
@@ -241,7 +259,7 @@ bool applySettingToken(const String &token) {
     if (!parseUint8(value, rate) || !(rate == 1 || rate == 2 || rate == 4 || rate == 8)) {
       return false;
     }
-    settings.reportRateKhz = rate;
+    candidate.reportRateKhz = rate;
     return true;
   }
 
@@ -261,16 +279,10 @@ bool applySettingToken(const String &token) {
     }
 
     uint8_t pin = 0;
-    if (!parseUint8(value, pin) || pin > 33 || (pin >= 14 && pin <= 17)) {
+    if (!parseUint8(value, pin) || !isValidDigitalButtonPin(pin)) {
       return false;
     }
-    for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
-      if (i != buttonIndex && settings.buttonPins[i] == pin) {
-        return false;
-      }
-    }
-    settings.buttonPins[buttonIndex] = pin;
-    beginDigitalButton(pin);
+    candidate.buttonPins[buttonIndex] = pin;
     return true;
   }
 
@@ -284,7 +296,7 @@ bool applySettingToken(const String &token) {
   }
 
   const String field = name.substring(5);
-  KeyCalibration &key = settings.keys[keyIndex];
+  KeyCalibration &key = candidate.keys[keyIndex];
 
   if (field == "ACTIVE_LOW") {
     uint8_t activeLow = 0;
@@ -318,6 +330,7 @@ bool applySettingToken(const String &token) {
 }
 
 void handleSetCommand(const String &line) {
+  ControllerSettings candidate = settings;
   const int lineLength = static_cast<int>(line.length());
   int start = 4;
   bool changed = false;
@@ -336,7 +349,7 @@ void handleSetCommand(const String &line) {
     }
 
     const String token = line.substring(start, end);
-    if (!applySettingToken(token)) {
+    if (!applySettingToken(candidate, token)) {
       Serial.print("ERR bad_setting ");
       Serial.println(token);
       return;
@@ -350,6 +363,15 @@ void handleSetCommand(const String &line) {
     return;
   }
 
+  if (!hasValidDigitalButtonPinMap(candidate)) {
+    Serial.println("ERR bad_button_pins");
+    return;
+  }
+
+  settings = candidate;
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    beginDigitalButton(settings.buttonPins[i]);
+  }
   finalizeSettings(settings);
   Serial.println("OK set");
 }

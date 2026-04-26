@@ -7,6 +7,7 @@ import argparse
 import json
 import mimetypes
 import subprocess
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -156,6 +157,7 @@ class WebConfigApp:
         self._device_factory = device_factory
         self._port_lister = port_lister
         self._flasher = flasher or FirmwareFlasher(baud=baud, device_factory=device_factory)
+        self._serial_lock = threading.Lock()
 
     def ports(self) -> JsonDict:
         return {"ok": True, "ports": list(self._port_lister())}
@@ -250,11 +252,12 @@ class WebConfigApp:
         if not port:
             raise ValueError("serial port is required")
 
-        device = self._device_factory(port, self.baud)
-        try:
-            return device.command(command)
-        finally:
-            device.close()
+        with self._serial_lock:
+            device = self._device_factory(port, self.baud)
+            try:
+                return device.command(command)
+            finally:
+                device.close()
 
     @staticmethod
     def _optional_int(payload: JsonDict, name: str) -> Optional[int]:

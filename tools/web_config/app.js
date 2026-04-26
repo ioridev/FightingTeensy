@@ -52,6 +52,9 @@ let monitorTimer = null;
 let pinMonitorTimer = null;
 let buttonMonitorTimer = null;
 let latestPressedPins = [];
+let sampleBusy = false;
+let pinScanBusy = false;
+let buttonSampleBusy = false;
 
 function selectedPort() {
   return elements.portSelect.value;
@@ -249,7 +252,10 @@ function usePressedPinForButton(key) {
 }
 
 async function scanAndUsePressedPinForButton(key) {
-  await scanPins();
+  const data = await scanPins();
+  if (data === null) {
+    throw new Error("pin scan is already running");
+  }
   usePressedPinForButton(key);
 }
 
@@ -316,21 +322,39 @@ async function loadSettings() {
 }
 
 async function sample() {
+  if (sampleBusy) return null;
+  sampleBusy = true;
+  try {
   const data = await api("/api/sample", {});
   renderSamples(fieldsOf(data));
   return data;
+  } finally {
+    sampleBusy = false;
+  }
 }
 
 async function scanPins() {
+  if (pinScanBusy) return null;
+  pinScanBusy = true;
+  try {
   const data = await api("/api/pins", {});
   renderPinScan(fieldsOf(data));
   return data;
+  } finally {
+    pinScanBusy = false;
+  }
 }
 
 async function sampleButtons() {
+  if (buttonSampleBusy) return null;
+  buttonSampleBusy = true;
+  try {
   const data = await api("/api/buttons", {});
   renderArcadeTester(fieldsOf(data));
   return data;
+  } finally {
+    buttonSampleBusy = false;
+  }
 }
 
 async function save() {

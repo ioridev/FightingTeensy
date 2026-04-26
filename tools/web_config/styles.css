@@ -132,6 +132,51 @@ main {
   border-bottom: 1px solid var(--line);
 }
 
+.workflow-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.workflow-actions,
+.workflow-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-actions button {
+  min-width: 152px;
+  height: 40px;
+  font-weight: 650;
+}
+
+.workflow-tools {
+  justify-content: flex-end;
+}
+
+.monitor-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.monitor-state.busy {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: var(--warn);
+}
+
 .sample-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -375,6 +420,14 @@ label.field input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .workflow-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-tools {
+    justify-content: flex-start;
+  }
+
   .arcade-tester {
     grid-template-columns: 1fr;
   }
@@ -420,7 +473,16 @@ label.field input {
 
   .connection,
   .connection select,
-  .connection button {
+  .connection button,
+  .workflow-actions button,
+  .workflow-tools button,
+  .monitor-state {
     width: 100%;
+  }
+
+  .workflow-actions,
+  .workflow-tools {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

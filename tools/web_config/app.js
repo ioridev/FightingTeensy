@@ -46,6 +46,7 @@ const elements = {
   buttonPinGrid: document.querySelector("#buttonPinGrid"),
   pinScan: document.querySelector("#pinScan"),
   arcadeTester: document.querySelector("#arcadeTester"),
+  monitorState: document.querySelector("#monitorState"),
 };
 
 let monitorTimer = null;
@@ -68,6 +69,45 @@ function setStatus(text, ok = true) {
 function log(text) {
   const stamp = new Date().toLocaleTimeString();
   elements.log.textContent = `[${stamp}] ${text}\n${elements.log.textContent}`;
+}
+
+function isAnyMonitorRunning() {
+  return Boolean(monitorTimer || pinMonitorTimer || buttonMonitorTimer);
+}
+
+function updateMonitorState() {
+  if (!elements.monitorState) return;
+  if (isAnyMonitorRunning()) {
+    elements.monitorState.textContent = "Monitor running: serial is busy";
+    elements.monitorState.classList.add("busy");
+  } else {
+    elements.monitorState.textContent = "Monitor stopped";
+    elements.monitorState.classList.remove("busy");
+  }
+}
+
+function stopAllMonitors() {
+  const hallButton = document.querySelector("#monitor");
+  const pinButton = document.querySelector("#monitorPins");
+  const buttonTester = document.querySelector("#monitorButtons");
+
+  if (monitorTimer) {
+    clearInterval(monitorTimer);
+    monitorTimer = null;
+  }
+  if (pinMonitorTimer) {
+    clearInterval(pinMonitorTimer);
+    pinMonitorTimer = null;
+  }
+  if (buttonMonitorTimer) {
+    clearInterval(buttonMonitorTimer);
+    buttonMonitorTimer = null;
+  }
+
+  if (hallButton) hallButton.textContent = "Monitor";
+  if (pinButton) pinButton.textContent = "Monitor Pins";
+  if (buttonTester) buttonTester.textContent = "Monitor Buttons";
+  updateMonitorState();
 }
 
 async function api(path, payload = null) {
@@ -299,9 +339,12 @@ async function refreshPorts() {
       const teensyPort = data.ports.find((port) => String(port.hwid || "").toUpperCase().includes("VID:PID=16C0:0483"));
       if (teensyPort) {
         elements.portSelect.value = teensyPort.device;
+        setStatus(`Ready: ${selectedPort()}`);
+        loadSettings().catch(handleError);
+      } else {
+        setStatus("Teensy serial not found", false);
+        log("Teensy serial port not found. Use config firmware mode, then Refresh Ports.");
       }
-      setStatus(`Ready: ${selectedPort()}`);
-      loadSettings().catch(handleError);
     }
   } catch (error) {
     setStatus(error.message, false);
@@ -358,11 +401,13 @@ async function sampleButtons() {
 }
 
 async function save() {
+  stopAllMonitors();
   const data = await api("/api/save", {});
   log(data.response.text);
 }
 
 async function flashFirmware(target) {
+  stopAllMonitors();
   setStatus(`Flashing ${target}...`);
   log(`flash ${target} started`);
   const data = await api("/api/flash", { target });
@@ -410,10 +455,12 @@ function togglePinMonitor() {
     clearInterval(pinMonitorTimer);
     pinMonitorTimer = null;
     button.textContent = "Monitor Pins";
+    updateMonitorState();
     return;
   }
   pinMonitorTimer = setInterval(() => scanPins().catch(handleError), 120);
   button.textContent = "Stop Pins";
+  updateMonitorState();
 }
 
 function toggleButtonMonitor() {
@@ -422,10 +469,12 @@ function toggleButtonMonitor() {
     clearInterval(buttonMonitorTimer);
     buttonMonitorTimer = null;
     button.textContent = "Monitor Buttons";
+    updateMonitorState();
     return;
   }
   buttonMonitorTimer = setInterval(() => sampleButtons().catch(handleError), 50);
   button.textContent = "Stop Buttons";
+  updateMonitorState();
 }
 
 function toggleMonitor() {
@@ -434,10 +483,12 @@ function toggleMonitor() {
     clearInterval(monitorTimer);
     monitorTimer = null;
     button.textContent = "Monitor";
+    updateMonitorState();
     return;
   }
   monitorTimer = setInterval(() => sample().catch(handleError), 150);
   button.textContent = "Stop";
+  updateMonitorState();
 }
 
 function bindEvents() {
@@ -451,6 +502,7 @@ function bindEvents() {
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());
   document.querySelector("#sampleButtons").addEventListener("click", () => sampleButtons().catch(handleError));
   document.querySelector("#monitorButtons").addEventListener("click", () => toggleButtonMonitor());
+  document.querySelector("#stopAllMonitors").addEventListener("click", () => stopAllMonitors());
   document.querySelector("#scanPins").addEventListener("click", () => scanPins().catch(handleError));
   document.querySelector("#monitorPins").addEventListener("click", () => togglePinMonitor());
   document.querySelector("#applyButtonPins").addEventListener("click", () => applyButtonPins().catch(handleError));

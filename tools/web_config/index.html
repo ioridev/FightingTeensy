@@ -15,16 +15,26 @@
       </div>
       <div class="connection">
         <select id="portSelect" aria-label="Serial port"></select>
-        <button id="refreshPorts" type="button">Refresh</button>
+        <button id="refreshPorts" type="button">Refresh Ports</button>
         <button id="ping" type="button">Ping</button>
-        <button id="load" type="button">Load</button>
-        <button id="save" type="button" class="primary">Save EEPROM</button>
-        <button id="flashConfig" type="button">Flash Config</button>
-        <button id="returnXinput" type="button">Return XInput</button>
+        <button id="load" type="button">Load Settings</button>
       </div>
     </header>
 
     <main>
+      <section class="panel workflow-panel">
+        <div class="workflow-actions" aria-label="Main workflow">
+          <button id="applyButtonPins" type="button">1 Apply Mapping</button>
+          <button id="save" type="button" class="primary">2 Save EEPROM</button>
+          <button id="returnXinput" type="button">3 Return XInput</button>
+        </div>
+        <div class="workflow-tools">
+          <span id="monitorState" class="monitor-state">Monitor stopped</span>
+          <button id="stopAllMonitors" type="button">Stop All Monitors</button>
+          <button id="flashConfig" type="button">Flash Config Firmware</button>
+        </div>
+      </section>
+
       <section class="panel live-panel">
         <div class="panel-title">
           <h2>Live Hall Values</h2>
@@ -43,7 +53,6 @@
           <div class="actions">
             <button id="scanPins" type="button">Scan Pins</button>
             <button id="monitorPins" type="button">Monitor Pins</button>
-            <button id="applyButtonPins" type="button">Apply All</button>
           </div>
         </div>
         <div class="pin-scan" id="pinScan"></div>

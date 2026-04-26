@@ -46,7 +46,7 @@ def default_port_lister() -> Iterable[JsonDict]:
     except ImportError:
         return []
 
-    return [
+    ports = [
         {
             "device": port.device,
             "description": port.description,
@@ -54,6 +54,13 @@ def default_port_lister() -> Iterable[JsonDict]:
         }
         for port in list_ports.comports()
     ]
+    return sorted(
+        ports,
+        key=lambda port: (
+            0 if "VID:PID=16C0:0483" in str(port.get("hwid", "")).upper() else 1,
+            str(port.get("device", "")),
+        ),
+    )
 
 
 class FirmwareFlasher:

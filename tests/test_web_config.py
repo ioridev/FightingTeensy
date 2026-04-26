@@ -7,7 +7,7 @@ import urllib.request
 from pathlib import Path
 
 from tools.fighting_teensy_cli import parse_response
-from tools.fighting_teensy_web import FirmwareFlasher, WebConfigApp, create_server
+from tools.fighting_teensy_web import FirmwareFlasher, WebConfigApp, create_server, default_port_lister
 
 
 class FakeDevice:
@@ -135,6 +135,19 @@ class WebConfigAppTests(unittest.TestCase):
         )
 
         self.assertEqual(app.ports()["ports"][0]["device"], "COM3")
+
+    def test_default_port_lister_prefers_teensy_serial(self):
+        # This is an integration check against the current host USB state. If a
+        # Teensy serial config port is present, it should be listed before CH340.
+        ports = list(default_port_lister())
+        teensy_indexes = [
+            index for index, port in enumerate(ports)
+            if "VID:PID=16C0:0483" in str(port.get("hwid", "")).upper()
+        ]
+        if not teensy_indexes:
+            self.skipTest("Teensy serial config port is not present")
+
+        self.assertEqual(teensy_indexes[0], 0)
 
     def test_reboot_to_bootloader_sends_bootloader_command(self):
         devices = []

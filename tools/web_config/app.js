@@ -201,6 +201,12 @@ function usePressedPinForButton(key) {
   }
   const card = buttonCardFor(key);
   card.querySelector('[data-field="pin"]').value = latestPressedPins[0];
+  log(`${key} pin set to ${latestPressedPins[0]} from scan`);
+}
+
+async function scanAndUsePressedPinForButton(key) {
+  await scanPins();
+  usePressedPinForButton(key);
 }
 
 function labelForPin(pin) {
@@ -240,6 +246,10 @@ async function refreshPorts() {
       elements.portSelect.innerHTML = '<option value="">No serial ports</option>';
       setStatus("No serial ports", false);
     } else {
+      const teensyPort = data.ports.find((port) => String(port.hwid || "").toUpperCase().includes("VID:PID=16C0:0483"));
+      if (teensyPort) {
+        elements.portSelect.value = teensyPort.device;
+      }
       setStatus(`Ready: ${selectedPort()}`);
       loadSettings().catch(handleError);
     }
@@ -365,11 +375,7 @@ function bindEvents() {
       applyButtonPin(button.dataset.button).catch(handleError);
     }
     if (button.dataset.action === "usePressedPin") {
-      try {
-        usePressedPinForButton(button.dataset.button);
-      } catch (error) {
-        handleError(error);
-      }
+      scanAndUsePressedPinForButton(button.dataset.button).catch(handleError);
     }
   });
   elements.directionGrid.addEventListener("click", (event) => {

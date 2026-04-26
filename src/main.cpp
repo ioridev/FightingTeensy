@@ -16,6 +16,7 @@ constexpr uint8_t DIGITAL_SCAN_PINS[] = {
 constexpr const char *BUTTON_SETTING_NAMES[FT_BUTTON_COUNT] = {
     "a", "b", "x", "y", "lb", "rb", "back", "start", "l3", "r3", "logo", "lt", "rt",
 };
+constexpr uint8_t PHYSICAL_CONFIG_BOOT_PIN = 7;
 constexpr uint16_t BOOT_CHORD_WINDOW_MS = 1200;
 constexpr uint8_t BOOT_CHORD_SAMPLE_DELAY_MS = 5;
 
@@ -46,11 +47,11 @@ void beginInputs() {
 }
 
 bool bootChordHeld() {
-  if (readButton(settings.buttonPins[FT_BUTTON_START])) {
+  if (readButton(PHYSICAL_CONFIG_BOOT_PIN)) {
     return true;
   }
 
-  if (readButton(settings.buttonPins[FT_BUTTON_Y])) {
+  if (readButton(settings.buttonPins[FT_BUTTON_START])) {
     return true;
   }
 

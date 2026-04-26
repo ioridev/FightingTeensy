@@ -16,6 +16,8 @@ constexpr uint8_t DIGITAL_SCAN_PINS[] = {
 constexpr const char *BUTTON_SETTING_NAMES[FT_BUTTON_COUNT] = {
     "a", "b", "x", "y", "lb", "rb", "back", "start", "l3", "r3", "logo", "lt", "rt",
 };
+constexpr uint16_t BOOT_CHORD_WINDOW_MS = 1200;
+constexpr uint8_t BOOT_CHORD_SAMPLE_DELAY_MS = 5;
 
 ControllerSettings settings;
 MagneticKey dpadKeys[FT_KEY_COUNT];
@@ -58,6 +60,17 @@ bool bootChordHeld() {
     return readButton(defaultStartPin);
   }
 
+  return false;
+}
+
+bool waitForBootChord() {
+  const uint32_t deadline = millis() + BOOT_CHORD_WINDOW_MS;
+  while (millis() < deadline) {
+    if (bootChordHeld()) {
+      return true;
+    }
+    delay(BOOT_CHORD_SAMPLE_DELAY_MS);
+  }
   return false;
 }
 
@@ -500,8 +513,7 @@ void setup() {
   beginInputs();
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
-  delay(30);
-  if (bootChordHeld()) {
+  if (waitForBootChord()) {
     rebootToBootloader();
   }
   XInput.setAutoSend(false);

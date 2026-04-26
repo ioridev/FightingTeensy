@@ -6,8 +6,8 @@
   --muted: #91a0b7;
   --line: rgba(252, 132, 22, 0.32);
   --line-strong: #fc8416;
-  --panel: rgba(12, 15, 22, 0.94);
-  --panel-2: rgba(17, 23, 34, 0.9);
+  --panel: #000000;
+  --panel-2: #050505;
   --accent: #fc8416;
   --accent-2: #00ff80;
   --accent-ink: #080a0f;
@@ -19,10 +19,15 @@
   --shadow-green: 0 0 18px rgba(0, 255, 128, 0.18);
   --stripe: repeating-linear-gradient(
     -45deg,
-    rgba(252, 132, 22, 0.52) 0 7px,
-    rgba(252, 132, 22, 0.09) 7px 15px,
-    transparent 15px 28px
+    rgba(255, 170, 0, 0.95) 0 12px,
+    rgba(255, 94, 0, 0.85) 12px 15px,
+    transparent 15px 30px,
+    rgba(255, 94, 0, 0.85) 30px 33px
   );
+  --rib-node: url("data:image/svg+xml,%3Csvg width='500' height='100' viewBox='0 0 500 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M500 0H37.5414L0 100H462.459L500 0Z' fill='%2300FF80'/%3E%3Cpath d='M168.5 0H37.1618L30.5 19H161.838L168.5 0Z' fill='%23FC8416'/%3E%3C/svg%3E");
+  --rib-node-flip: url("data:image/svg+xml,%3Csvg width='500' height='100' viewBox='0 0 500 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H462.459L500 100H37.5415L0 0Z' fill='%2300FF80'/%3E%3Cpath d='M0 0H131.338L138 19H6.66178L0 0Z' fill='%23FC8416'/%3E%3C/svg%3E");
+  --hex-red-flat: url("data:image/svg+xml,%3Csvg width='584' height='507' viewBox='0 0 584 507' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M145.77 507L0 253.5L145.77 0H437.28L583.05 253.5L437.28 507H145.77Z' fill='%23E60003'/%3E%3Cpath d='M149.046 500.648L6.92932 253.5L149.046 6.35181H433.253L575.37 253.5L433.253 500.648H149.046Z' fill='black'/%3E%3Cpath d='M155.007 492L18 253.5L155.007 15H428.993L566 253.5L428.993 492H155.007Z' fill='%23E60003'/%3E%3C/svg%3E");
+  --hex-orange-point: url("data:image/svg+xml,%3Csvg width='115' height='133' viewBox='0 0 115 133' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M115 99.1859L57.5 132.25L0 99.1859L0 33.0641L57.5 0L115 33.0641L115 99.1859Z' fill='%23fa0'/%3E%3Cpath d='M113.69 98.4426L57.6307 130.678L1.57149 98.4426L1.57149 33.9776L57.6307 1.74199L113.69 33.9776L113.69 98.4426Z' fill='black'/%3E%3Cpath d='M111.071 97.0671L57.6309 127.796L4.1913 97.0671L4.1913 35.6145L57.6309 4.88519L111.071 35.6145L111.071 97.0671Z' fill='%23fa0'/%3E%3C/svg%3E");
 }
 
 * {
@@ -33,11 +38,9 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 14% 8%, rgba(252, 132, 22, 0.18), transparent 34%),
-    radial-gradient(circle at 88% 12%, rgba(0, 255, 128, 0.11), transparent 28%),
-    linear-gradient(rgba(252, 132, 22, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(252, 132, 22, 0.045) 1px, transparent 1px),
-    var(--bg);
+    linear-gradient(rgba(252, 132, 22, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(252, 132, 22, 0.06) 1px, transparent 1px),
+    #000;
   background-size: auto, auto, 28px 28px, 28px 28px, auto;
   color: var(--ink);
   font-family: "Segoe UI", "Yu Gothic UI", system-ui, sans-serif;
@@ -65,10 +68,10 @@ button,
 select,
 input[type="number"] {
   height: 36px;
-  border: 1px solid rgba(252, 132, 22, 0.4);
-  border-radius: 4px;
-  background: rgba(4, 7, 12, 0.92);
-  color: var(--ink);
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  background: #000;
+  color: var(--accent);
 }
 
 button {
@@ -104,7 +107,7 @@ button:hover::before {
 
 button.primary {
   border-color: var(--accent);
-  background: linear-gradient(135deg, #ffb13d, var(--accent));
+  background: var(--accent);
   color: var(--accent-ink);
   box-shadow: var(--shadow-orange);
 }
@@ -124,10 +127,8 @@ button:disabled {
   justify-content: space-between;
   gap: 20px;
   padding: 16px 22px;
-  border-bottom: 2px solid var(--line-strong);
-  background:
-    linear-gradient(90deg, rgba(252, 132, 22, 0.2), transparent 42%),
-    rgba(7, 9, 13, 0.96);
+  border-bottom: 3px solid var(--line-strong);
+  background: #000;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(10px);
 }
@@ -154,7 +155,7 @@ h1 {
   font-size: 24px;
   font-weight: 800;
   color: var(--accent);
-  text-shadow: 0 0 16px rgba(252, 132, 22, 0.45);
+  text-shadow: none;
 }
 
 h2 {
@@ -203,42 +204,78 @@ main {
 .button-pin-card,
 .sample-card {
   position: relative;
-  border: 2px solid var(--line);
+  border: 3px solid var(--line-strong);
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 34%),
-    var(--panel);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  background: #000;
+  box-shadow: none;
 }
 
-.panel::before,
 .direction-card::before,
 .button-pin-card::before,
 .sample-card::before {
   content: "";
   position: absolute;
-  top: -2px;
-  left: 12px;
+  top: -3px;
+  left: 14px;
   width: 54px;
-  height: 4px;
+  height: 5px;
   background: var(--accent);
-  box-shadow: var(--shadow-orange);
 }
 
 .panel-title {
+  position: relative;
   justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(90deg, rgba(252, 132, 22, 0.13), transparent);
+  min-height: 44px;
+  padding: 7px 14px;
+  overflow: hidden;
+  border-bottom: 3px solid var(--line-strong);
+  background: #000;
+}
+
+.panel-title::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--stripe);
+  background-size: 47px 47px;
+  animation: stripeSlide 18s linear infinite;
+  opacity: 0.94;
+}
+
+.panel-title h2,
+.panel-title .actions,
+.panel-title > button {
+  position: relative;
+  z-index: 1;
+}
+
+.panel-title h2 {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  background: #000;
+  color: var(--accent);
 }
 
 .workflow-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 18px;
   align-items: center;
-  padding: 14px;
+  padding: 18px 14px;
   margin-bottom: 14px;
+}
+
+.workflow-panel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  transform: translateX(-50%);
+  background: var(--accent);
 }
 
 .workflow-actions,
@@ -250,8 +287,18 @@ main {
 }
 
 .workflow-actions button {
-  min-width: 166px;
-  height: 44px;
+  min-width: 174px;
+  height: 38px;
+  border: 0;
+  background-image: var(--rib-node);
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  color: #000;
+}
+
+.workflow-actions button:nth-child(even) {
+  background-image: var(--rib-node-flip);
 }
 
 .workflow-tools {
@@ -264,7 +311,7 @@ main {
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid rgba(0, 255, 128, 0.38);
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(0, 255, 128, 0.08);
   color: var(--accent-2);
   font-weight: 800;
@@ -293,9 +340,7 @@ main {
 .sample-card {
   min-height: 196px;
   padding: 12px;
-  background:
-    linear-gradient(180deg, rgba(0, 255, 128, 0.045), transparent),
-    var(--panel-2);
+  background: #000;
 }
 
 .sample-card.active {
@@ -333,12 +378,12 @@ main {
   width: 48px;
   height: 138px;
   overflow: hidden;
-  border: 1px solid rgba(252, 132, 22, 0.5);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 0;
   background:
-    linear-gradient(to top, rgba(255, 255, 255, 0.11) 0 1px, transparent 1px 25%),
-    linear-gradient(90deg, rgba(252, 132, 22, 0.15), transparent 45%, rgba(0, 255, 128, 0.1)),
-    #05080d;
+    var(--stripe),
+    #000;
+  background-size: 47px 47px, auto;
   box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.62);
 }
 
@@ -442,7 +487,7 @@ main {
   align-items: end;
   gap: 8px;
   padding: 12px;
-  background: var(--panel-2);
+  background: #000;
 }
 
 .button-pin-actions {
@@ -488,8 +533,13 @@ main {
 }
 
 .tester-direction {
-  border-radius: 4px;
-  clip-path: polygon(24.96% 100%, 0% 50%, 24.96% 0%, 74.87% 0%, 99.84% 50%, 74.87% 100%);
+  border: 0;
+  background-image: var(--hex-red-flat);
+  background-color: transparent;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--bad);
 }
 
 .face-area {
@@ -503,20 +553,22 @@ main {
 }
 
 .tester-button {
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.18), transparent 28%),
-    rgba(5, 8, 13, 0.9);
+  border: 0;
+  border-radius: 0;
+  background-image: var(--hex-orange-point);
+  background-color: transparent;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--accent);
 }
 
 .tester-direction.active,
 .tester-button.active {
-  border-color: var(--accent-2);
-  background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.26), transparent 28%),
-    linear-gradient(135deg, #37ff9d, #00b65b);
+  border-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 128, 0.65));
   color: #031008;
-  box-shadow: 0 0 0 4px rgba(0, 255, 128, 0.16), var(--shadow-green);
+  box-shadow: none;
 }
 
 .metric {
@@ -550,8 +602,8 @@ main {
   justify-content: space-between;
   gap: 8px;
   padding: 12px;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(90deg, rgba(252, 132, 22, 0.13), transparent);
+  border-bottom: 3px solid var(--line-strong);
+  background: #000;
 }
 
 .direction-body {

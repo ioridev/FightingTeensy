@@ -75,23 +75,23 @@ Magnetic D-pad inputs use Teensy 4.0 analog pins:
 | Left | 16 / A2 |
 | Right | 17 / A3 |
 
-Digital buttons follow the original Precision Fighting Board layout where possible. Trigger pins are moved to 20 and 21 in this starter mapping to avoid colliding with the hall-sensor analog pins.
+Digital buttons use the current FightingTeensy board wiring. Pins 14-17 are reserved for the hall-sensor D-pad inputs.
 
 | Button | Default Pin |
 | --- | --- |
-| A | 11 |
-| B | 12 |
-| X | 8 |
-| Y | 7 |
-| LB | 10 |
-| RB | 9 |
-| Back | 5 |
-| Start | 6 |
+| A | 0 |
+| B | 1 |
+| X | 2 |
+| Y | 3 |
+| LB | 21 |
+| RB | 5 |
+| Back | 20 |
+| Start | 7 |
 | L3 | 18 |
 | R3 | 19 |
-| Home | 4 |
-| LT | 20 |
-| RT | 21 |
+| Home | 9 |
+| LT | 4 |
+| RT | 8 |
 
 ## PC Tool
 

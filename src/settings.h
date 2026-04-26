@@ -38,7 +38,7 @@ enum DigitalButtonIndex : uint8_t {
 };
 
 constexpr uint8_t FT_DEFAULT_BUTTON_PINS[FT_BUTTON_COUNT] = {
-    11, 12, 8, 7, 10, 9, 5, 6, 18, 19, 4, 20, 21,
+    0, 1, 2, 3, 21, 5, 20, 7, 18, 19, 9, 4, 8,
 };
 
 struct KeyCalibration {

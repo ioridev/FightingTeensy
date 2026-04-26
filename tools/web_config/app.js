@@ -50,6 +50,7 @@ const elements = {
   arcadeTester: document.querySelector("#arcadeTester"),
   monitorState: document.querySelector("#monitorState"),
   bootloaderPanel: document.querySelector("#bootloaderPanel"),
+  snackbar: document.querySelector("#snackbar"),
 };
 
 let monitorTimer = null;
@@ -60,6 +61,7 @@ let latestSampleFields = {};
 let sampleBusy = false;
 let pinScanBusy = false;
 let buttonSampleBusy = false;
+let snackbarTimer = null;
 
 function selectedPort() {
   return elements.portSelect.value;
@@ -73,6 +75,23 @@ function setStatus(text, ok = true) {
 function log(text) {
   const stamp = new Date().toLocaleTimeString();
   elements.log.textContent = `[${stamp}] ${text}\n${elements.log.textContent}`;
+}
+
+function notify(message, kind = "ok") {
+  if (!elements.snackbar) return;
+  if (snackbarTimer) {
+    clearTimeout(snackbarTimer);
+    snackbarTimer = null;
+  }
+  elements.snackbar.textContent = message;
+  elements.snackbar.className = `snackbar show ${kind}`;
+  elements.snackbar.hidden = false;
+  snackbarTimer = setTimeout(() => {
+    elements.snackbar.classList.remove("show");
+    snackbarTimer = setTimeout(() => {
+      elements.snackbar.hidden = true;
+    }, 180);
+  }, 2800);
 }
 
 function isAnyMonitorRunning() {
@@ -450,6 +469,7 @@ async function ping() {
   const data = await api("/api/ping", {});
   setStatus(data.response.text);
   log(data.response.text);
+  notify("Ping OK");
 }
 
 async function loadSettings() {
@@ -457,6 +477,7 @@ async function loadSettings() {
   applySettings(fieldsOf(data));
   renderSamples(latestSampleFields);
   log(data.response.text);
+  notify("Settings loaded");
 }
 
 async function sample() {
@@ -500,15 +521,18 @@ async function save() {
   stopAllMonitors();
   const data = await api("/api/save", {});
   log(data.response.text);
+  notify("Saved to EEPROM");
 }
 
 async function flashFirmware(target) {
   stopAllMonitors();
   setStatus(`Flashing ${target}...`);
+  notify(`Flashing ${target}...`, "busy");
   log(`flash ${target} started`);
   const data = await api("/api/flash", { target });
   log(data.flash.log || `flash ${target} done`);
   setStatus(`Flashed ${target}`);
+  notify(target === "xinput" ? "Returned to XInput" : "Config firmware flashed");
   await refreshPorts();
 }
 
@@ -517,32 +541,38 @@ async function calRest() {
   log(data.response.text);
   await sample();
   await loadSettings();
+  notify("Idle calibrated");
 }
 
 async function calBottom(key) {
   const data = await api("/api/calibrate", { key, point: "bottom" });
   log(data.response.text);
   await loadSettings();
+  notify(`${key} pressed point calibrated`);
 }
 
 async function applyCard(key) {
   const data = await api("/api/set", payloadForCard(key));
   log(`${key}: ${data.response.text}`);
+  notify(`${key} trigger values applied`);
 }
 
 async function applyButtonPin(key) {
   const data = await api("/api/set", payloadForButtonPin(key));
   log(`${key} pin: ${data.response.text}`);
+  notify(`${key} pin applied`);
 }
 
 async function applyButtonPins() {
   const data = await api("/api/set", payloadForButtonPins());
   log(`button pins: ${data.response.text}`);
+  notify("Button mapping applied");
 }
 
 function handleError(error) {
   setStatus(error.message, false);
   log(`ERROR ${error.message}`);
+  notify(error.message, "error");
 }
 
 function togglePinMonitor() {

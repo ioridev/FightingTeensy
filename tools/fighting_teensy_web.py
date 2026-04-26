@@ -119,7 +119,7 @@ class FirmwareFlasher:
         log = []
         log.append(self._run(["pio", "run", "-e", env], timeout=120))
 
-        if target == "xinput" and port:
+        if port:
             self._request_bootloader(port)
             time.sleep(0.8)
 

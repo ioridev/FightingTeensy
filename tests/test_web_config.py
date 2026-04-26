@@ -228,6 +228,32 @@ class FirmwareFlasherTests(unittest.TestCase):
         self.assertTrue(commands[1][0].endswith("teensy_loader_cli.exe"))
         self.assertIn(".pio\\build\\teensy40_config_serial\\firmware.hex", commands[1][-1])
 
+    def test_firmware_flasher_reboots_serial_before_config_flash(self):
+        commands = []
+        devices = []
+
+        def runner(command, cwd, timeout, text, capture_output):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        def factory(port, baud):
+            device = FakeDevice(["OK bootloader"])
+            devices.append(device)
+            return device
+
+        flasher = FirmwareFlasher(
+            project_dir=Path("C:/repo"),
+            runner=runner,
+            device_factory=factory,
+        )
+
+        result = flasher.flash("config", port="COM3")
+
+        self.assertEqual(result["target"], "config")
+        self.assertEqual(devices[0].commands, ["BOOTLOADER"])
+        self.assertEqual(commands[0], ["pio", "run", "-e", "teensy40_config_serial"])
+        self.assertIn(".pio\\build\\teensy40_config_serial\\firmware.hex", commands[1][-1])
+
     def test_firmware_flasher_reboots_serial_before_xinput_flash(self):
         commands = []
         devices = []

@@ -205,6 +205,72 @@ main {
   gap: 8px;
 }
 
+.tester-panel {
+  margin-top: 14px;
+}
+
+.arcade-tester {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(420px, 1.4fr);
+  gap: 18px;
+  padding: 16px;
+}
+
+.stick-area {
+  display: grid;
+  grid-template-columns: repeat(3, 68px);
+  grid-template-rows: repeat(3, 68px);
+  justify-content: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 250px;
+}
+
+.stick-center,
+.tester-direction,
+.tester-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: var(--ink);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.stick-center {
+  border-radius: 50%;
+  background: #e6eaf0;
+}
+
+.tester-direction {
+  border-radius: 8px;
+}
+
+.face-area {
+  display: grid;
+  grid-template-columns: repeat(5, 72px);
+  grid-template-rows: repeat(3, 72px);
+  justify-content: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 250px;
+}
+
+.tester-button {
+  border-radius: 50%;
+}
+
+.tester-direction.active,
+.tester-button.active {
+  border-color: #0f766e;
+  background: #12b886;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(18, 184, 134, 0.18);
+}
+
 .metric {
   display: flex;
   justify-content: space-between;
@@ -308,6 +374,10 @@ label.field input {
   .direction-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .arcade-tester {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -335,6 +405,17 @@ label.field input {
   .actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .stick-area {
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+  }
+
+  .face-area {
+    grid-template-columns: repeat(4, 58px);
+    grid-template-rows: repeat(4, 58px);
+    gap: 9px;
   }
 
   .connection,

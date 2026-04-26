@@ -209,6 +209,36 @@ void printSample() {
   Serial.println();
 }
 
+void printButtonState() {
+  const bool up = dpadKeys[FT_KEY_UP].update();
+  const bool down = dpadKeys[FT_KEY_DOWN].update();
+  const bool left = dpadKeys[FT_KEY_LEFT].update();
+  const bool right = dpadKeys[FT_KEY_RIGHT].update();
+
+  bool dpadUp = up;
+  bool dpadDown = down;
+  bool dpadLeft = left;
+  bool dpadRight = right;
+  applySocd(dpadUp, dpadDown, dpadLeft, dpadRight);
+
+  Serial.print("BUTTONS");
+  Serial.print(" up=");
+  Serial.print(dpadUp ? 1 : 0);
+  Serial.print(" down=");
+  Serial.print(dpadDown ? 1 : 0);
+  Serial.print(" left=");
+  Serial.print(dpadLeft ? 1 : 0);
+  Serial.print(" right=");
+  Serial.print(dpadRight ? 1 : 0);
+  for (uint8_t i = 0; i < FT_BUTTON_COUNT; ++i) {
+    Serial.print(" ");
+    Serial.print(BUTTON_SETTING_NAMES[i]);
+    Serial.print("=");
+    Serial.print(readButton(settings.buttonPins[i]) ? 1 : 0);
+  }
+  Serial.println();
+}
+
 void calibrateKeyPoint(uint8_t keyIndex, bool bottom, uint16_t samples) {
   if (keyIndex >= FT_KEY_COUNT) {
     Serial.println("ERR invalid_key");
@@ -440,6 +470,8 @@ void handleCommand(String line) {
     printSample();
   } else if (line == "PINS") {
     printDigitalPins();
+  } else if (line == "BUTTONS") {
+    printButtonState();
   } else if (line.startsWith("CAL ")) {
     handleCalCommand(line);
   } else if (line.startsWith("SET ")) {

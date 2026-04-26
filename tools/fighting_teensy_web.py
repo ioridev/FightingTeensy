@@ -172,6 +172,9 @@ class WebConfigApp:
     def pins(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, command_for_action("pins"))
 
+    def buttons(self, payload: JsonDict) -> JsonDict:
+        return self._safe_command(payload, command_for_action("buttons"))
+
     def save(self, payload: JsonDict) -> JsonDict:
         return self._safe_command(payload, "SAVE")
 
@@ -223,6 +226,7 @@ class WebConfigApp:
             "/api/settings": self.settings,
             "/api/sample": self.sample,
             "/api/pins": self.pins,
+            "/api/buttons": self.buttons,
             "/api/calibrate": self.calibrate,
             "/api/set": self.set_values,
             "/api/save": self.save,

@@ -115,6 +115,23 @@ class WebConfigAppTests(unittest.TestCase):
         self.assertEqual(result["response"]["fields"]["pin6"], "1")
         self.assertEqual(devices[0].commands, ["PINS"])
 
+    def test_reads_xinput_button_state(self):
+        devices = []
+
+        def factory(port, baud):
+            device = FakeDevice(["BUTTONS a=1 b=0 start=1 up=0 down=0 left=0 right=1"])
+            devices.append(device)
+            return device
+
+        app = WebConfigApp(default_port="COM7", device_factory=factory)
+
+        result = app.buttons({})
+
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["response"]["fields"]["a"], "1")
+        self.assertEqual(result["response"]["fields"]["right"], "1")
+        self.assertEqual(devices[0].commands, ["BUTTONS"])
+
     def test_reports_serial_errors_as_json_safe_failures(self):
         def factory(port, baud):
             raise RuntimeError("port busy")

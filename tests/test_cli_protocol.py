@@ -33,6 +33,7 @@ class ProtocolParsingTests(unittest.TestCase):
         self.assertEqual(command_for_action("reset"), "RESET")
         self.assertEqual(command_for_action("bootloader"), "BOOTLOADER")
         self.assertEqual(command_for_action("pins"), "PINS")
+        self.assertEqual(command_for_action("buttons"), "BUTTONS")
 
     def test_set_command_builds_key_value_protocol(self):
         command = command_for_action(

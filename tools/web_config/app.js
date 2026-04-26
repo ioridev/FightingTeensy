@@ -21,6 +21,22 @@ const buttons = [
   { key: "rt", label: "RT" },
 ];
 
+const testerButtons = [
+  { key: "x", label: "X", row: 1, col: 1 },
+  { key: "y", label: "Y", row: 1, col: 2 },
+  { key: "rb", label: "RB", row: 1, col: 3 },
+  { key: "rt", label: "RT", row: 1, col: 4 },
+  { key: "a", label: "A", row: 2, col: 1 },
+  { key: "b", label: "B", row: 2, col: 2 },
+  { key: "lb", label: "LB", row: 2, col: 3 },
+  { key: "lt", label: "LT", row: 2, col: 4 },
+  { key: "back", label: "Back", row: 3, col: 1 },
+  { key: "start", label: "Start", row: 3, col: 2 },
+  { key: "logo", label: "Home", row: 3, col: 3 },
+  { key: "l3", label: "L3", row: 3, col: 4 },
+  { key: "r3", label: "R3", row: 3, col: 5 },
+];
+
 const elements = {
   portSelect: document.querySelector("#portSelect"),
   status: document.querySelector("#status"),
@@ -29,10 +45,12 @@ const elements = {
   directionGrid: document.querySelector("#directionGrid"),
   buttonPinGrid: document.querySelector("#buttonPinGrid"),
   pinScan: document.querySelector("#pinScan"),
+  arcadeTester: document.querySelector("#arcadeTester"),
 };
 
 let monitorTimer = null;
 let pinMonitorTimer = null;
+let buttonMonitorTimer = null;
 let latestPressedPins = [];
 
 function selectedPort() {
@@ -96,6 +114,32 @@ function renderButtonPins() {
       </div>
     </article>
   `).join("");
+}
+
+function renderArcadeTester(fields = {}) {
+  const active = (key) => fields[key] === "1";
+  elements.arcadeTester.innerHTML = `
+    <div class="stick-area" aria-label="D-pad tester">
+      <div></div>
+      <div class="tester-direction ${active("up") ? "active" : ""}" data-button="up">Up</div>
+      <div></div>
+      <div class="tester-direction ${active("left") ? "active" : ""}" data-button="left">Left</div>
+      <div class="stick-center"></div>
+      <div class="tester-direction ${active("right") ? "active" : ""}" data-button="right">Right</div>
+      <div></div>
+      <div class="tester-direction ${active("down") ? "active" : ""}" data-button="down">Down</div>
+      <div></div>
+    </div>
+    <div class="face-area" aria-label="XInput button tester">
+      ${testerButtons.map((button) => `
+        <div
+          class="tester-button ${active(button.key) ? "active" : ""}"
+          data-button="${button.key}"
+          style="grid-row:${button.row};grid-column:${button.col};"
+        >${button.label}</div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderDirectionCards() {
@@ -283,6 +327,12 @@ async function scanPins() {
   return data;
 }
 
+async function sampleButtons() {
+  const data = await api("/api/buttons", {});
+  renderArcadeTester(fieldsOf(data));
+  return data;
+}
+
 async function save() {
   const data = await api("/api/save", {});
   log(data.response.text);
@@ -342,6 +392,18 @@ function togglePinMonitor() {
   button.textContent = "Stop Pins";
 }
 
+function toggleButtonMonitor() {
+  const button = document.querySelector("#monitorButtons");
+  if (buttonMonitorTimer) {
+    clearInterval(buttonMonitorTimer);
+    buttonMonitorTimer = null;
+    button.textContent = "Monitor Buttons";
+    return;
+  }
+  buttonMonitorTimer = setInterval(() => sampleButtons().catch(handleError), 50);
+  button.textContent = "Stop Buttons";
+}
+
 function toggleMonitor() {
   const button = document.querySelector("#monitor");
   if (monitorTimer) {
@@ -363,6 +425,8 @@ function bindEvents() {
   document.querySelector("#returnXinput").addEventListener("click", () => flashFirmware("xinput").catch(handleError));
   document.querySelector("#sample").addEventListener("click", () => sample().catch(handleError));
   document.querySelector("#monitor").addEventListener("click", () => toggleMonitor());
+  document.querySelector("#sampleButtons").addEventListener("click", () => sampleButtons().catch(handleError));
+  document.querySelector("#monitorButtons").addEventListener("click", () => toggleButtonMonitor());
   document.querySelector("#scanPins").addEventListener("click", () => scanPins().catch(handleError));
   document.querySelector("#monitorPins").addEventListener("click", () => togglePinMonitor());
   document.querySelector("#applyButtonPins").addEventListener("click", () => applyButtonPins().catch(handleError));
@@ -392,6 +456,7 @@ function bindEvents() {
 renderSamples();
 renderPinScan();
 renderButtonPins();
+renderArcadeTester();
 renderDirectionCards();
 bindEvents();
 refreshPorts();

@@ -115,7 +115,7 @@ python tools\fighting_teensy_web.py --port 8765
 
 Then open `http://127.0.0.1:8765/`. Use the Web UI while the board is running `teensy40_config_serial`; XInput firmware does not expose a COM port in this first version. The Web UI loads the current EEPROM-backed button pin mapping, can edit that mapping as a full set, and can scan non-hall pins while you press buttons to confirm the assembled wiring.
 
-If the board is running XInput firmware, hold Start while plugging in USB. The firmware will enter the Teensy bootloader, then the Web UI's `Flash Config` button can write `teensy40_config_serial` without opening the case. After tuning, use `Return XInput` to write the normal XInput firmware back.
+If the board is running XInput firmware, hold Start while plugging in USB. This does not directly expose a COM port; the firmware enters the Teensy bootloader, then the Web UI's `Flash Config` button can write `teensy40_config_serial` without opening the case. After that flash completes, the board re-enumerates as USB Serial and the Web UI can load settings. The boot chord checks both the saved Start mapping and the default physical Start pin 6 so a bad saved button map does not lock out configuration entry.
 
 Tune SOCD, report rate, and per-direction hall thresholds:
 

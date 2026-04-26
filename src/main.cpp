@@ -43,6 +43,20 @@ void beginInputs() {
   }
 }
 
+bool bootChordHeld() {
+  if (readButton(settings.buttonPins[FT_BUTTON_START])) {
+    return true;
+  }
+
+  const uint8_t defaultStartPin = FT_DEFAULT_BUTTON_PINS[FT_BUTTON_START];
+  if (defaultStartPin != settings.buttonPins[FT_BUTTON_START]) {
+    pinMode(defaultStartPin, INPUT_PULLUP);
+    return readButton(defaultStartPin);
+  }
+
+  return false;
+}
+
 #if defined(FIGHTING_TEENSY_CONFIG_MODE)
 void beginDigitalPinScan() {
   for (uint8_t i = 0; i < sizeof(DIGITAL_SCAN_PINS); ++i) {
@@ -451,7 +465,7 @@ void setup() {
 
 #if defined(FIGHTING_TEENSY_XINPUT_MODE)
   delay(30);
-  if (readButton(settings.buttonPins[FT_BUTTON_START])) {
+  if (bootChordHeld()) {
     rebootToBootloader();
   }
   XInput.setAutoSend(false);

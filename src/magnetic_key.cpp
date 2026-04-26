@@ -6,36 +6,37 @@ void MagneticKey::begin(uint8_t analogPin, const KeyCalibration *calibration) {
   pinMode(pin_, INPUT);
   raw_ = analogRead(pin_);
   travel_ = currentTravel(raw_);
-  peakTravel_ = travel_;
+  lastRapidTravel_ = travel_;
   pressed_ = false;
 }
 
 bool MagneticKey::update() {
   raw_ = analogRead(pin_);
   travel_ = currentTravel(raw_);
+  const int16_t rapidOffset = static_cast<int16_t>(calibration_->rapidTriggerOffset);
 
-  if (!pressed_) {
-    peakTravel_ = travel_;
-    if (travel_ >= static_cast<int16_t>(calibration_->pressOffset)) {
-      pressed_ = true;
-      peakTravel_ = travel_;
+  if (rapidOffset > 0) {
+    const bool pressing = travel_ > lastRapidTravel_ + rapidOffset;
+    const bool releasing = lastRapidTravel_ > travel_ + rapidOffset;
+
+    if (pressing || releasing) {
+      lastRapidTravel_ = travel_;
     }
+
+    if (!pressed_ && pressing && travel_ >= static_cast<int16_t>(calibration_->pressOffset)) {
+      pressed_ = true;
+    } else if (pressed_ && releasing &&
+               travel_ <= static_cast<int16_t>(calibration_->releaseOffset)) {
+      pressed_ = false;
+    }
+
     return pressed_;
   }
 
-  if (travel_ > peakTravel_) {
-    peakTravel_ = travel_;
-  }
-
-  const bool releasedByStaticPoint =
-      travel_ <= static_cast<int16_t>(calibration_->releaseOffset);
-  const bool releasedByRapidTrigger =
-      calibration_->rapidTriggerOffset > 0 &&
-      travel_ + static_cast<int16_t>(calibration_->rapidTriggerOffset) < peakTravel_;
-
-  if (releasedByStaticPoint || releasedByRapidTrigger) {
+  if (!pressed_ && travel_ >= static_cast<int16_t>(calibration_->pressOffset)) {
+    pressed_ = true;
+  } else if (pressed_ && travel_ <= static_cast<int16_t>(calibration_->releaseOffset)) {
     pressed_ = false;
-    peakTravel_ = travel_;
   }
 
   return pressed_;
@@ -63,4 +64,3 @@ int16_t MagneticKey::currentTravel(uint16_t value) const {
   const int16_t travel = calibration_->activeLow ? rest - rawValue : rawValue - rest;
   return travel < 0 ? 0 : travel;
 }
-

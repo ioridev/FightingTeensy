@@ -122,11 +122,13 @@ Tune SOCD, report rate, and per-direction hall thresholds:
 ```powershell
 python tools\fighting_teensy_cli.py --port COM7 set --socd neutral --rate-khz 8
 python tools\fighting_teensy_cli.py --port COM7 set --button start --pin 6
-python tools\fighting_teensy_cli.py --port COM7 set --key up --press 80 --release 45 --rapid 28 --active-low 1
+python tools\fighting_teensy_cli.py --port COM7 set --key up --press 80 --release 80 --rapid 28 --active-low 1
 python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point rest
 python tools\fighting_teensy_cli.py --port COM7 cal-key --key up --point bottom
 python tools\fighting_teensy_cli.py --port COM7 save
 ```
+
+For hall directions, `press` is the activation offset from idle, `release` is the rapid-trigger threshold, and `rapid` is the noise filter/movement amount. Set `rapid` to `0` to disable rapid-trigger behavior and use static press/release thresholds.
 
 Use `monitor` to watch live hall readings:
 

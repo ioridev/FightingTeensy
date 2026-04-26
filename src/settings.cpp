@@ -129,7 +129,7 @@ void loadDefaultSettings(ControllerSettings &settings) {
     settings.keys[i].rest = 512;
     settings.keys[i].bottom = 128;
     settings.keys[i].pressOffset = 80;
-    settings.keys[i].releaseOffset = 45;
+    settings.keys[i].releaseOffset = 80;
     settings.keys[i].rapidTriggerOffset = 28;
     settings.keys[i].activeLow = 1;
     settings.keys[i].reserved = 0;

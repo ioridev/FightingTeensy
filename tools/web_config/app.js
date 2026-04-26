@@ -137,8 +137,8 @@ function renderSamples(fields = {}) {
     return `
       <div class="sample-card">
         <strong>${direction.label}</strong>
-        <div class="metric"><span>raw</span><span>${raw}</span></div>
-        <div class="metric"><span>travel</span><span>${travel}</span></div>
+        <div class="metric"><span>Raw</span><span>${raw}</span></div>
+        <div class="metric"><span>Travel</span><span>${travel}</span></div>
       </div>
     `;
   }).join("");
@@ -190,35 +190,35 @@ function renderDirectionCards() {
     <article class="direction-card" data-key="${direction.key}">
       <div class="direction-header">
         <h3>${direction.label}</h3>
-        <button type="button" data-action="calBottom" data-key="${direction.key}">Cal Bottom</button>
+        <button type="button" data-action="calBottom" data-key="${direction.key}">Calibrate Pressed</button>
       </div>
       <div class="direction-body">
         <label class="field">
-          Press offset
-          <input type="number" min="0" max="1023" step="1" data-field="press">
-        </label>
-        <label class="field">
-          Release offset
-          <input type="number" min="0" max="1023" step="1" data-field="release">
-        </label>
-        <label class="field">
-          Rapid trigger offset
-          <input type="number" min="0" max="1023" step="1" data-field="rapid">
-        </label>
-        <label class="field">
-          Rest
+          Idle Voltage
           <input type="number" min="0" max="1023" step="1" data-field="rest">
         </label>
         <label class="field">
-          Bottom
+          Pressed Voltage
           <input type="number" min="0" max="1023" step="1" data-field="bottom">
+        </label>
+        <label class="field">
+          Activation Offset
+          <input type="number" min="0" max="1023" step="1" data-field="press">
+        </label>
+        <label class="field">
+          Rapid Trigger Threshold
+          <input type="number" min="0" max="1023" step="1" data-field="release">
+        </label>
+        <label class="field">
+          Rapid Trigger Noise Filter
+          <input type="number" min="0" max="1023" step="1" data-field="rapid">
         </label>
         <label class="check-row">
           <input type="checkbox" data-field="active_low">
-          Active low
+          Flip Polarity
         </label>
         <div class="card-actions">
-          <button type="button" data-action="apply" data-key="${direction.key}">Apply</button>
+          <button type="button" data-action="apply" data-key="${direction.key}">Apply Trigger Values</button>
           <button type="button" data-action="sampleOne" data-key="${direction.key}">Sample</button>
         </div>
       </div>

@@ -48,6 +48,10 @@ bool bootChordHeld() {
     return true;
   }
 
+  if (readButton(settings.buttonPins[FT_BUTTON_Y])) {
+    return true;
+  }
+
   const uint8_t defaultStartPin = FT_DEFAULT_BUTTON_PINS[FT_BUTTON_START];
   if (defaultStartPin != settings.buttonPins[FT_BUTTON_START]) {
     pinMode(defaultStartPin, INPUT_PULLUP);

@@ -18,6 +18,7 @@ constexpr const char *BUTTON_SETTING_NAMES[FT_BUTTON_COUNT] = {
 };
 constexpr uint8_t PHYSICAL_CONFIG_BOOT_PIN = 7;
 constexpr uint16_t BOOT_CHORD_WINDOW_MS = 1200;
+constexpr uint16_t BOOT_CHORD_HOLD_MS = 450;
 constexpr uint8_t BOOT_CHORD_SAMPLE_DELAY_MS = 5;
 
 ControllerSettings settings;
@@ -66,9 +67,15 @@ bool bootChordHeld() {
 
 bool waitForBootChord() {
   const uint32_t deadline = millis() + BOOT_CHORD_WINDOW_MS;
+  uint16_t heldMs = 0;
   while (millis() < deadline) {
     if (bootChordHeld()) {
-      return true;
+      heldMs += BOOT_CHORD_SAMPLE_DELAY_MS;
+      if (heldMs >= BOOT_CHORD_HOLD_MS) {
+        return true;
+      }
+    } else {
+      heldMs = 0;
     }
     delay(BOOT_CHORD_SAMPLE_DELAY_MS);
   }

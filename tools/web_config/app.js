@@ -202,20 +202,36 @@ function mmToOffset(mm, strokeCounts) {
 function cardSettingsForDirection(direction) {
   const card = cardFor(direction.key);
   if (!card) {
-    return { strokeCounts: 1, pressOffset: 0, releaseOffset: 0 };
+    return { strokeCounts: 1, pressOffset: 0, releaseOffset: 0, rapidOffset: 0, rapidEnabled: false };
   }
   const strokeCounts = strokeCountsForCard(card);
+  const rapidEnabled = card.querySelector('[data-field="rapid_enabled"]').checked;
   return {
     strokeCounts,
     pressOffset: mmToOffset(card.querySelector('[data-field="press_mm"]').value, strokeCounts),
     releaseOffset: mmToOffset(card.querySelector('[data-field="release_mm"]').value, strokeCounts),
-    rapidOffset: mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts),
+    rapidOffset: rapidEnabled ? mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts) : 0,
+    rapidEnabled,
   };
 }
 
 function rapidStateFor(direction, travelCounts, pressed, settings) {
   const state = rapidStates[direction.index];
   const now = Date.now();
+
+  if (!settings.rapidEnabled || settings.rapidOffset <= 0) {
+    if (pressed !== state.pressed) {
+      state.event = pressed ? "Static ON" : "Static OFF";
+      state.eventAt = now;
+    } else if (now - state.eventAt > 600) {
+      state.event = pressed ? "Static ON" : "Idle";
+    }
+    state.pressed = pressed;
+    state.peak = pressed ? Math.max(state.peak, travelCounts) : travelCounts;
+    state.trough = travelCounts;
+    state.returnTravel = 0;
+    return state;
+  }
 
   if (pressed) {
     if (!state.pressed) {
@@ -274,8 +290,10 @@ function renderSamples(fields = {}) {
     const returnMm = formatMm(offsetToMm(rt.returnTravel, settings.strokeCounts));
     const eventFresh = hasPressedState && Date.now() - rt.eventAt < 900;
     const rtClass = rt.event === "RT OFF" && eventFresh ? "rt-release" : "";
-    const rtStatus = hasPressedState
+    const rtStatus = hasPressedState && settings.rapidEnabled
       ? `<span>${active ? "ON" : "OFF"}</span><span>${rt.event}</span><span>RT OFF ${rt.rtOffCount}</span>`
+      : hasPressedState
+        ? `<span>${active ? "ON" : "OFF"}</span><span>RT OFF</span><span>DISABLED</span>`
       : "<span>FW OLD</span><span>NO RT DATA</span><span>FLASH CONFIG</span>";
     return `
       <div class="sample-card ${active ? "active" : ""} ${rtClass}">
@@ -371,6 +389,10 @@ function renderDirectionCards() {
           Static Reset Point (mm)
           <input type="number" min="0" max="4" step="0.1" data-field="release_mm">
         </label>
+        <label class="check-row">
+          <input type="checkbox" data-field="rapid_enabled">
+          Rapid Trigger
+        </label>
         <label class="field">
           Rapid Trigger Sensitivity (mm)
           <input type="number" min="0" max="4" step="0.1" data-field="rapid_mm">
@@ -396,6 +418,15 @@ function buttonCardFor(key) {
   return document.querySelector(`.button-pin-card[data-button="${key}"]`);
 }
 
+function updateRapidControls(card) {
+  const enabled = card.querySelector('[data-field="rapid_enabled"]').checked;
+  const input = card.querySelector('[data-field="rapid_mm"]');
+  input.disabled = !enabled;
+  if (enabled && numberFrom(input.value) <= 0) {
+    input.value = "0.1";
+  }
+}
+
 function applySettings(fields) {
   for (const direction of directions) {
     const card = cardFor(direction.key);
@@ -409,8 +440,11 @@ function applySettings(fields) {
       formatMm(clampMm(offsetToMm(fields[`key${direction.index}_press`], strokeCounts)));
     card.querySelector('[data-field="release_mm"]').value =
       formatMm(clampMm(offsetToMm(fields[`key${direction.index}_release`], strokeCounts)));
+    const rapidOffset = numberFrom(fields[`key${direction.index}_rapid`]);
+    card.querySelector('[data-field="rapid_enabled"]').checked = rapidOffset > 0;
     card.querySelector('[data-field="rapid_mm"]').value =
-      formatMm(clampMm(offsetToMm(fields[`key${direction.index}_rapid`], strokeCounts)));
+      formatMm(clampMm(offsetToMm(rapidOffset, strokeCounts)));
+    updateRapidControls(card);
     const activeLow = card.querySelector('[data-field="active_low"]');
     activeLow.checked = fields[`key${direction.index}_active_low`] === "1";
   }
@@ -434,7 +468,9 @@ function payloadForCard(key) {
   }
   payload.press = mmToOffset(card.querySelector('[data-field="press_mm"]').value, strokeCounts);
   payload.release = mmToOffset(card.querySelector('[data-field="release_mm"]').value, strokeCounts);
-  payload.rapid = mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts);
+  payload.rapid = card.querySelector('[data-field="rapid_enabled"]').checked
+    ? mmToOffset(card.querySelector('[data-field="rapid_mm"]').value, strokeCounts)
+    : 0;
   payload.active_low = card.querySelector('[data-field="active_low"]').checked ? 1 : 0;
   return payload;
 }
@@ -731,6 +767,10 @@ function bindEvents() {
   });
   elements.directionGrid.addEventListener("input", (event) => {
     if (event.target.closest("[data-field]")) {
+      const card = event.target.closest(".direction-card");
+      if (card && event.target.dataset.field === "rapid_enabled") {
+        updateRapidControls(card);
+      }
       renderSamples(latestSampleFields);
     }
   });
@@ -741,5 +781,9 @@ renderPinScan();
 renderButtonPins();
 renderArcadeTester();
 renderDirectionCards();
+for (const direction of directions) {
+  const card = cardFor(direction.key);
+  if (card) updateRapidControls(card);
+}
 bindEvents();
 refreshPorts();

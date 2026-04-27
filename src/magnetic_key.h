@@ -19,6 +19,7 @@ private:
   const KeyCalibration *calibration_ = nullptr;
   bool pressed_ = false;
   uint16_t raw_ = 0;
+  uint16_t filteredRaw_ = 0;
   int16_t travel_ = 0;
   int16_t rapidAnchorTravel_ = 0;
   bool requireRapidRepress_ = false;

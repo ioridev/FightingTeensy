@@ -130,7 +130,7 @@ python tools\fighting_teensy_cli.py --port COM7 save
 
 For hall directions, `rest` and `bottom` are raw ADC readings. `press` is the initial activation offset from idle. `rapid` is the rapid-trigger sensitivity: while pressed, moving back by this amount releases the key, and while rapid-released, pressing forward by this amount turns it back on. `release` is the static reset point used when rapid trigger is disabled or when the key returns near idle. Set `rapid` to `0` to disable rapid-trigger behavior and use static press/release thresholds.
 
-Use `monitor` to watch live hall readings. `SAMPLE` also reports each magnetic key's pressed state so the Web UI can show rapid-trigger ON/OFF events, return travel, and RT OFF counts while you test the feel:
+Use `monitor` to watch live hall readings. `SAMPLE` also reports each magnetic key's pressed state so the Web UI can show rapid-trigger ON/OFF events, return travel, and RT OFF counts while you test the feel. Runtime actuation uses a small moving average on ADC readings so low rapid-trigger sensitivities are less likely to chatter from sensor noise:
 
 ```powershell
 python tools\fighting_teensy_cli.py --port COM7 monitor --interval 0.05

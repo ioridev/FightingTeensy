@@ -1,16 +1,11 @@
 #include "magnetic_key.h"
 
-namespace {
-constexpr uint8_t FILTER_WINDOW = 8;
-}
-
 void MagneticKey::begin(uint8_t analogPin, const KeyCalibration *calibration) {
   pin_ = analogPin;
   calibration_ = calibration;
   pinMode(pin_, INPUT);
   raw_ = analogRead(pin_);
-  filteredRaw_ = raw_;
-  travel_ = currentTravel(filteredRaw_);
+  travel_ = currentTravel(raw_);
   rapidAnchorTravel_ = travel_;
   requireRapidRepress_ = false;
   pressed_ = false;
@@ -18,10 +13,7 @@ void MagneticKey::begin(uint8_t analogPin, const KeyCalibration *calibration) {
 
 bool MagneticKey::update() {
   raw_ = analogRead(pin_);
-  filteredRaw_ = static_cast<uint16_t>(
-      ((static_cast<uint32_t>(filteredRaw_) * (FILTER_WINDOW - 1)) + raw_) / FILTER_WINDOW
-  );
-  travel_ = currentTravel(filteredRaw_);
+  travel_ = currentTravel(raw_);
   const int16_t rapidOffset = static_cast<int16_t>(calibration_->rapidTriggerOffset);
 
   if (rapidOffset > 0) {
